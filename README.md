@@ -98,19 +98,19 @@ Car rental businesses face recurring challenges:
 
 ## Steps
 
-### Clone the repository:
+- Clone the repository:
 
-`git clone https://github.com/yourusername/RENTOPS-AI.git`
+`git clone https://github.com/mfscpayload-690/RENTOPS-AI.git`
 `cd RENTOPS-AI`
 
 
-### Configure the database:
+- Configure the database:
 
-### Import the schema from docs/schema.sql.
+- Import the schema from docs/schema.sql.
 
-### Update `db.properties` with database credentials.
+- Update `db.properties` with database credentials.
 
-### Build and run the project:
+- Build and run the project:
 ```
 mvn clean install
 mvn exec:java
