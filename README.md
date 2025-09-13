@@ -62,7 +62,7 @@ RENTOPS-AI/
 
 ## 👥 Team Members
 
-- Aleena Mary Joseph (Team Lead)
+- Aleena Mary Joseph
 
 - Abhijit P
 
