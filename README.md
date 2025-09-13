@@ -100,9 +100,10 @@ Car rental businesses face recurring challenges:
 
 - Clone the repository:
 
-`git clone https://github.com/mfscpayload-690/RENTOPS-AI.git`
-`cd RENTOPS-AI`
-
+```
+git clone https://github.com/mfscpayload-690/RENTOPS-AI.git`
+cd RENTOPS-AI
+```
 
 - Configure the database:
 
