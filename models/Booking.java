@@ -1,6 +1,8 @@
 package models;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class Booking {
     private int id;
@@ -9,9 +11,10 @@ public class Booking {
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
-    private double totalPrice;
+    private BigDecimal totalPrice;
+    private LocalDateTime createdAt;
 
-    public Booking(int id, int userId, int carId, LocalDate startDate, LocalDate endDate, String status, double totalPrice) {
+    public Booking(int id, int userId, int carId, LocalDate startDate, LocalDate endDate, String status, BigDecimal totalPrice, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId;
         this.carId = carId;
@@ -19,6 +22,7 @@ public class Booking {
         this.endDate = endDate;
         this.status = status;
         this.totalPrice = totalPrice;
+        this.createdAt = createdAt;
     }
 
     // Getters and setters
@@ -34,6 +38,8 @@ public class Booking {
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public double getTotalPrice() { return totalPrice; }
-    public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
+    public BigDecimal getTotalPrice() { return totalPrice; }
+    public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

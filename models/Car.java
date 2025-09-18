@@ -1,5 +1,7 @@
 package models;
 
+import java.math.BigDecimal;
+
 public class Car {
     private int id;
     private String make;
@@ -8,8 +10,9 @@ public class Car {
     private String licensePlate;
     private String status;
     private String specs;
+    private BigDecimal pricePerDay;
 
-    public Car(int id, String make, String model, int year, String licensePlate, String status, String specs) {
+    public Car(int id, String make, String model, int year, String licensePlate, String status, String specs, BigDecimal pricePerDay) {
         this.id = id;
         this.make = make;
         this.model = model;
@@ -17,6 +20,7 @@ public class Car {
         this.licensePlate = licensePlate;
         this.status = status;
         this.specs = specs;
+        this.pricePerDay = pricePerDay;
     }
 
     // Getters and setters
@@ -34,4 +38,6 @@ public class Car {
     public void setStatus(String status) { this.status = status; }
     public String getSpecs() { return specs; }
     public void setSpecs(String specs) { this.specs = specs; }
+    public BigDecimal getPricePerDay() { return pricePerDay; }
+    public void setPricePerDay(BigDecimal pricePerDay) { this.pricePerDay = pricePerDay; }
 }
