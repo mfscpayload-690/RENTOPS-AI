@@ -21,6 +21,44 @@ public class SchemaUpdater {
                     System.out.println("Organization column added successfully");
                 }
             }
+
+            // Check if user_sessions table exists
+            rs = meta.getTables(null, null, "user_sessions", null);
+            if (rs.next()) {
+                System.out.println("User sessions table already exists");
+            } else {
+                // Create user_sessions table
+                String createSessionsTable = """
+                    CREATE TABLE user_sessions (
+                        id INT PRIMARY KEY AUTO_INCREMENT,
+                        user_id INT NOT NULL,
+                        session_token VARCHAR(255) UNIQUE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                    """;
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate(createSessionsTable);
+                    System.out.println("User sessions table created successfully");
+                }
+
+                // Create indexes
+                String createIndexes = """
+                    CREATE INDEX idx_session_token ON user_sessions(session_token);
+                    CREATE INDEX idx_user_active_sessions ON user_sessions(user_id, is_active);
+                    """;
+                try (Statement stmt = conn.createStatement()) {
+                    for (String indexSql : createIndexes.split(";")) {
+                        if (!indexSql.trim().isEmpty()) {
+                            stmt.executeUpdate(indexSql.trim());
+                        }
+                    }
+                    System.out.println("Session table indexes created successfully");
+                }
+            }
+
         } catch (SQLException e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace();

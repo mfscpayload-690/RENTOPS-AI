@@ -6,6 +6,7 @@ import models.User;
 public class AuthService {
 
     private UserDAO userDAO = new UserDAO();
+    private SessionManager sessionManager = new SessionManager();
     private User currentUser;
     private String lastError = "";
 
@@ -22,10 +23,36 @@ public class AuthService {
         User user = userDAO.login(username.trim(), password);
         if (user != null) {
             currentUser = user;
+            // Create persistent session
+            sessionManager.createSession(user);
             lastError = "";
             return true;
         }
         lastError = userDAO.getLastError();
+        return false;
+    }
+
+    /**
+     * Attempts to restore session from database
+     */
+    public boolean restoreSession() {
+        if (sessionManager.restoreSession()) {
+            currentUser = sessionManager.getCurrentUser();
+            lastError = "";
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Logs out the current user and clears session
+     */
+    public boolean logout() {
+        if (sessionManager.logout()) {
+            currentUser = null;
+            lastError = "";
+            return true;
+        }
         return false;
     }
 
@@ -69,16 +96,25 @@ public class AuthService {
         return currentUser;
     }
 
-    public void logout() {
-        currentUser = null;
-        lastError = "";
-    }
-
     public boolean isAdmin() {
         return currentUser != null && "admin".equalsIgnoreCase(currentUser.getRole());
     }
 
     public boolean isUser() {
         return currentUser != null && "user".equalsIgnoreCase(currentUser.getRole());
+    }
+
+    /**
+     * Checks if user is currently logged in (has active session)
+     */
+    public boolean isLoggedIn() {
+        return sessionManager.isLoggedIn();
+    }
+
+    /**
+     * Updates session activity
+     */
+    public void updateSessionActivity() {
+        sessionManager.updateSessionActivity();
     }
 }

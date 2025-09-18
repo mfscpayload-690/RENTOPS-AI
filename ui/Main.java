@@ -1,16 +1,24 @@
 package ui;
 
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 public class Main {
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new RentopsAIMainFrame().setVisible(true));
     }
 }
 
 class RentopsAIMainFrame extends JFrame {
+
+    private services.AuthService authService;
+    private CardLayout cardLayout;
+    private JPanel cardPanel;
+
     public RentopsAIMainFrame() {
+        this.authService = new services.AuthService();
+
         setTitle("Rentops-AI");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 700);
@@ -18,25 +26,23 @@ class RentopsAIMainFrame extends JFrame {
         setLayout(new BorderLayout());
 
         setJMenuBar(createMenuBar());
-        CardLayout cardLayout = new CardLayout();
-        JPanel cardPanel = new JPanel(cardLayout);
-        services.AuthService authService = new services.AuthService();
+        cardLayout = new CardLayout();
+        cardPanel = new JPanel(cardLayout);
 
-        LoginPanel loginPanel = new LoginPanel(authService, () -> {
+        initializePanels();
+
+        // Check for existing session and auto-login
+        if (authService.restoreSession()) {
+            // Auto-login successful
             if (authService.isAdmin()) {
                 cardLayout.show(cardPanel, "admin");
             } else {
                 cardLayout.show(cardPanel, "user");
             }
-        });
-        AdminDashboard adminDashboard = new AdminDashboard();
-        UserDashboard userDashboard = new UserDashboard();
-
-        cardPanel.add(loginPanel, "login");
-        cardPanel.add(adminDashboard, "admin");
-        cardPanel.add(userDashboard, "user");
-
-        cardLayout.show(cardPanel, "login");
+        } else {
+            // No existing session, show login
+            cardLayout.show(cardPanel, "login");
+        }
 
         JPanel mainBgPanel = new JPanel(new BorderLayout()) {
             @Override
@@ -44,14 +50,31 @@ class RentopsAIMainFrame extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0,0,new Color(245,247,250),0,getHeight(),new Color(230,235,245));
+                GradientPaint gp = new GradientPaint(0, 0, new Color(245, 247, 250), 0, getHeight(), new Color(230, 235, 245));
                 g2.setPaint(gp);
-                g2.fillRect(0,0,getWidth(),getHeight());
+                g2.fillRect(0, 0, getWidth(), getHeight());
             }
         };
         mainBgPanel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
         mainBgPanel.add(cardPanel, BorderLayout.CENTER);
         add(mainBgPanel, BorderLayout.CENTER);
+    }
+
+    private void initializePanels() {
+        LoginPanel loginPanel = new LoginPanel(authService, () -> {
+            if (authService.isAdmin()) {
+                cardLayout.show(cardPanel, "admin");
+            } else {
+                cardLayout.show(cardPanel, "user");
+            }
+        });
+
+        AdminDashboard adminDashboard = new AdminDashboard(authService, cardLayout, cardPanel);
+        UserDashboard userDashboard = new UserDashboard(authService, cardLayout, cardPanel);
+
+        cardPanel.add(loginPanel, "login");
+        cardPanel.add(adminDashboard, "admin");
+        cardPanel.add(userDashboard, "user");
     }
 
     private JMenuBar createMenuBar() {
@@ -66,7 +89,7 @@ class RentopsAIMainFrame extends JFrame {
             menu.setFont(new Font("Segoe UI", Font.BOLD, 17));
             menuBar.add(menu);
         }
-        menuBar.setBorder(BorderFactory.createMatteBorder(0,0,2,0,new Color(52,73,94)));
+        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(52, 73, 94)));
         return menuBar;
     }
 }

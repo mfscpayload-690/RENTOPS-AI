@@ -18,10 +18,19 @@ public class UserDashboard extends JPanel {
     private AuthService authService;
     private CardLayout cardLayout;
     private JPanel contentPanel;
+    private CardLayout parentCardLayout;
+    private JPanel parentCardPanel;
 
     public UserDashboard() {
+        this(null, null, null);
+    }
+
+    public UserDashboard(AuthService authService, CardLayout parentCardLayout, JPanel parentCardPanel) {
         this.carDAO = new CarDAO();
         this.bookingDAO = new BookingDAO();
+        this.authService = authService;
+        this.parentCardLayout = parentCardLayout;
+        this.parentCardPanel = parentCardPanel;
 
         setBackground(new Color(245, 247, 250));
         setLayout(new BorderLayout());
@@ -79,6 +88,22 @@ public class UserDashboard extends JPanel {
             sidebar.add(button);
             sidebar.add(Box.createVerticalStrut(10));
         }
+
+        // Add logout button at the bottom
+        sidebar.add(Box.createVerticalGlue()); // Push logout button to bottom
+
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.setBackground(new Color(231, 76, 60));
+        logoutButton.setForeground(Color.WHITE);
+        logoutButton.setFocusPainted(false);
+        logoutButton.setBorderPainted(false);
+        logoutButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        logoutButton.setMaximumSize(new Dimension(180, 40));
+        logoutButton.addActionListener(e -> showLogoutDialog());
+
+        sidebar.add(logoutButton);
+        sidebar.add(Box.createVerticalStrut(20));
 
         return sidebar;
     }
@@ -312,13 +337,29 @@ public class UserDashboard extends JPanel {
         logoutButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         logoutButton.setPreferredSize(new Dimension(150, 40));
 
-        logoutButton.addActionListener(e -> {
-            // This would typically handle logout logic
-            JOptionPane.showMessageDialog(this, "Logout functionality will be implemented with proper navigation.");
-        });
+        logoutButton.addActionListener(e -> showLogoutDialog());
 
         panel.add(logoutButton, gbc);
 
         return panel;
+    }
+
+    private void showLogoutDialog() {
+        if (authService != null && parentCardLayout != null && parentCardPanel != null) {
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            LogoutDialog dialog = new LogoutDialog(parentFrame, authService, parentCardLayout, parentCardPanel);
+            dialog.setVisible(true);
+        } else {
+            // Fallback if not properly initialized
+            int result = JOptionPane.showConfirmDialog(
+                    this,
+                    "Are you sure you want to logout?",
+                    "Logout Confirmation",
+                    JOptionPane.YES_NO_OPTION
+            );
+            if (result == JOptionPane.YES_OPTION) {
+                System.exit(0); // Simple exit as fallback
+            }
+        }
     }
 }

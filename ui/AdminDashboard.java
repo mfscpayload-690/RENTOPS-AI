@@ -15,18 +15,29 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class AdminDashboard extends JPanel {
+
     private CarDAO carDAO;
     private BookingDAO bookingDAO;
     private UserDAO userDAO;
     private CardLayout cardLayout;
     private JPanel contentPanel;
+    private services.AuthService authService;
+    private CardLayout parentCardLayout;
+    private JPanel parentCardPanel;
 
     public AdminDashboard() {
+        this(null, null, null);
+    }
+
+    public AdminDashboard(services.AuthService authService, CardLayout parentCardLayout, JPanel parentCardPanel) {
         this.carDAO = new CarDAO();
         this.bookingDAO = new BookingDAO();
         this.userDAO = new UserDAO();
-        
-        setBackground(new Color(245,247,250));
+        this.authService = authService;
+        this.parentCardLayout = parentCardLayout;
+        this.parentCardPanel = parentCardPanel;
+
+        setBackground(new Color(245, 247, 250));
         setLayout(new BorderLayout());
 
         // Create sidebar
@@ -36,17 +47,17 @@ public class AdminDashboard extends JPanel {
         // Create main content area
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        contentPanel.setBackground(new Color(245,247,250));
-        
+        contentPanel.setBackground(new Color(245, 247, 250));
+
         // Add different panels
         contentPanel.add(createOverviewPanel(), "overview");
         contentPanel.add(createUsersPanel(), "users");
         contentPanel.add(createCarsPanel(), "cars");
         contentPanel.add(createBookingsPanel(), "bookings");
         contentPanel.add(createReportsPanel(), "reports");
-        
+
         add(contentPanel, BorderLayout.CENTER);
-        
+
         // Show overview by default
         cardLayout.show(contentPanel, "overview");
     }
@@ -79,24 +90,42 @@ public class AdminDashboard extends JPanel {
             button.setAlignmentX(Component.CENTER_ALIGNMENT);
             button.setMaximumSize(new Dimension(180, 40));
             button.addActionListener(e -> cardLayout.show(contentPanel, cardName));
-            
+
             sidebar.add(button);
             sidebar.add(Box.createVerticalStrut(10));
         }
+
+        // Add logout button at the bottom
+        sidebar.add(Box.createVerticalGlue()); // Push logout button to bottom
+
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.setBackground(new Color(231, 76, 60));
+        logoutButton.setForeground(Color.WHITE);
+        logoutButton.setFocusPainted(false);
+        logoutButton.setBorderPainted(false);
+        logoutButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        logoutButton.setMaximumSize(new Dimension(180, 40));
+        logoutButton.addActionListener(e -> showLogoutDialog());
+
+        sidebar.add(logoutButton);
+        sidebar.add(Box.createVerticalStrut(20));
 
         return sidebar;
     }
 
     private JPanel createOverviewPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245,247,250));
+        panel.setBackground(new Color(245, 247, 250));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(20, 20, 20, 20);
 
         JLabel title = new JLabel("Admin Dashboard Overview");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         title.setForeground(new Color(52, 73, 94));
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
         panel.add(title, gbc);
 
         // Statistics cards
@@ -161,10 +190,18 @@ public class AdminDashboard extends JPanel {
                                 String title = titleComp.getText();
                                 JLabel valueLabel = (JLabel) valueComp;
                                 switch (title) {
-                                    case "Total Users": valueLabel.setText("25"); break;
-                                    case "Total Cars": valueLabel.setText("15"); break;
-                                    case "Active Bookings": valueLabel.setText("8"); break;
-                                    case "Available Cars": valueLabel.setText("7"); break;
+                                    case "Total Users":
+                                        valueLabel.setText("25");
+                                        break;
+                                    case "Total Cars":
+                                        valueLabel.setText("15");
+                                        break;
+                                    case "Active Bookings":
+                                        valueLabel.setText("8");
+                                        break;
+                                    case "Available Cars":
+                                        valueLabel.setText("7");
+                                        break;
                                 }
                             }
                         }
@@ -177,7 +214,7 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createUsersPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245,247,250));
+        panel.setBackground(new Color(245, 247, 250));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel title = new JLabel("User Management");
@@ -193,7 +230,7 @@ public class AdminDashboard extends JPanel {
         table.setRowHeight(25);
         table.getTableHeader().setBackground(new Color(52, 73, 94));
         table.getTableHeader().setForeground(Color.WHITE);
-        
+
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -208,7 +245,7 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createCarsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245,247,250));
+        panel.setBackground(new Color(245, 247, 250));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel title = new JLabel("Car Management");
@@ -224,42 +261,42 @@ public class AdminDashboard extends JPanel {
         table.setRowHeight(25);
         table.getTableHeader().setBackground(new Color(52, 73, 94));
         table.getTableHeader().setForeground(Color.WHITE);
-        
+
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
 
         // Buttons panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        buttonPanel.setBackground(new Color(245,247,250));
-        
+        buttonPanel.setBackground(new Color(245, 247, 250));
+
         JButton addButton = new JButton("Add Car");
         JButton editButton = new JButton("Edit Car");
         JButton deleteButton = new JButton("Delete Car");
         JButton refreshButton = new JButton("Refresh");
-        
+
         addButton.setBackground(new Color(46, 204, 113));
         editButton.setBackground(new Color(52, 152, 219));
         deleteButton.setBackground(new Color(231, 76, 60));
         refreshButton.setBackground(new Color(149, 165, 166));
-        
+
         addButton.setForeground(Color.WHITE);
         editButton.setForeground(Color.WHITE);
         deleteButton.setForeground(Color.WHITE);
         refreshButton.setForeground(Color.WHITE);
-        
+
         addButton.setFocusPainted(false);
         editButton.setFocusPainted(false);
         deleteButton.setFocusPainted(false);
         refreshButton.setFocusPainted(false);
-        
+
         refreshButton.addActionListener(e -> loadCarsData(model));
-        
+
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
         buttonPanel.add(refreshButton);
-        
+
         panel.add(buttonPanel, BorderLayout.SOUTH);
 
         // Load initial data
@@ -302,7 +339,7 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createBookingsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245,247,250));
+        panel.setBackground(new Color(245, 247, 250));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel title = new JLabel("Booking Management");
@@ -318,7 +355,7 @@ public class AdminDashboard extends JPanel {
         table.setRowHeight(25);
         table.getTableHeader().setBackground(new Color(52, 73, 94));
         table.getTableHeader().setForeground(Color.WHITE);
-        
+
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -363,14 +400,15 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createReportsPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245,247,250));
+        panel.setBackground(new Color(245, 247, 250));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(20, 20, 20, 20);
 
         JLabel title = new JLabel("Reports & Analytics");
         title.setFont(new Font("Segoe UI", Font.BOLD, 24));
         title.setForeground(new Color(52, 73, 94));
-        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
         panel.add(title, gbc);
 
         JLabel subtitle = new JLabel("Future AI/NLP analytics integration point");
@@ -402,5 +440,24 @@ public class AdminDashboard extends JPanel {
         panel.add(userActivity, gbc);
 
         return panel;
+    }
+
+    private void showLogoutDialog() {
+        if (authService != null && parentCardLayout != null && parentCardPanel != null) {
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            LogoutDialog dialog = new LogoutDialog(parentFrame, authService, parentCardLayout, parentCardPanel);
+            dialog.setVisible(true);
+        } else {
+            // Fallback if not properly initialized
+            int result = JOptionPane.showConfirmDialog(
+                    this,
+                    "Are you sure you want to logout?",
+                    "Logout Confirmation",
+                    JOptionPane.YES_NO_OPTION
+            );
+            if (result == JOptionPane.YES_OPTION) {
+                System.exit(0); // Simple exit as fallback
+            }
+        }
     }
 }
