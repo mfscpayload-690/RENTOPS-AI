@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch Rentops-AI",
+            "request": "launch",
+            "mainClass": "ui.Main",
+            "projectName": "RENTOPS-AI",
+            "args": "",
+            "console": "internalConsole"
+        }
+    ]
+}
