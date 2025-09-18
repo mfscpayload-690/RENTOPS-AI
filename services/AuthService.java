@@ -4,6 +4,7 @@ import dao.UserDAO;
 import models.User;
 
 public class AuthService {
+
     private UserDAO userDAO = new UserDAO();
     private User currentUser;
     private String lastError = "";
@@ -17,18 +18,22 @@ public class AuthService {
             lastError = "Password cannot be empty";
             return false;
         }
-        
+
         User user = userDAO.login(username.trim(), password);
         if (user != null) {
             currentUser = user;
             lastError = "";
             return true;
         }
-        lastError = "Invalid username or password";
+        lastError = userDAO.getLastError();
         return false;
     }
 
     public boolean register(String username, String password, String role) {
+        return register(username, password, role, null);
+    }
+
+    public boolean register(String username, String password, String role, String organization) {
         // Input validation
         if (username == null || username.trim().isEmpty()) {
             lastError = "Username cannot be empty";
@@ -46,12 +51,12 @@ public class AuthService {
             lastError = "Username cannot be longer than 50 characters";
             return false;
         }
-        
-        boolean result = userDAO.register(username.trim(), password, role);
+
+        boolean result = userDAO.register(username.trim(), password, role, organization);
         if (result) {
             lastError = "";
         } else {
-            lastError = "Registration failed. Username may already exist.";
+            lastError = userDAO.getLastError();
         }
         return result;
     }
