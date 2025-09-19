@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Main",
+            "request": "launch",
+            "mainClass": "ui.Main",
+            "projectName": "RENTOPS-AI_39c7ac93"
+        },
+        {
+            "type": "java",
             "name": "Launch Rentops-AI",
             "request": "launch",
             "mainClass": "ui.Main",
