@@ -6,6 +6,8 @@ import dao.UserDAO;
 import models.Car;
 import models.Booking;
 import models.User;
+import ui.components.KeyboardShortcuts;
+import ui.components.Toast;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -60,6 +62,9 @@ public class AdminDashboard extends JPanel {
 
         // Show overview by default
         cardLayout.show(contentPanel, "overview");
+
+        // Initialize keyboard shortcuts
+        initializeKeyboardShortcuts();
     }
 
     private JPanel createSidebar() {
@@ -459,5 +464,21 @@ public class AdminDashboard extends JPanel {
                 System.exit(0); // Simple exit as fallback
             }
         }
+    }
+
+    /**
+     * Initialize keyboard shortcuts for the dashboard
+     */
+    private void initializeKeyboardShortcuts() {
+        KeyboardShortcuts.initialize(this);
+
+        // Delay showing the toast until the component is visible
+        Timer toastTimer = new Timer(1500, e -> {
+            if (isShowing() && isVisible()) {
+                Toast.info(this, "Press Ctrl+H to view keyboard shortcuts");
+            }
+        });
+        toastTimer.setRepeats(false);
+        toastTimer.start();
     }
 }

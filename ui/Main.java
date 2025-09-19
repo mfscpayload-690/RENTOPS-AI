@@ -2,6 +2,8 @@ package ui;
 
 import java.awt.*;
 import javax.swing.*;
+import ui.components.KeyboardShortcuts;
+import ui.components.Toast;
 
 public class Main {
 
@@ -75,6 +77,14 @@ class RentopsAIMainFrame extends JFrame {
         cardPanel.add(loginPanel, "login");
         cardPanel.add(adminDashboard, "admin");
         cardPanel.add(userDashboard, "user");
+        
+        // Initialize keyboard shortcuts for the main frame
+        KeyboardShortcuts.initialize(getRootPane());
+        
+        // Show a hint about keyboard shortcuts after a short delay
+        Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
+        hintTimer.setRepeats(false);
+        hintTimer.start();
     }
 
     private JMenuBar createMenuBar() {
