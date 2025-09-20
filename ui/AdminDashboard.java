@@ -516,6 +516,25 @@ public class AdminDashboard extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
 
+        // Add double-click listener to show car details dialog
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int row = table.getSelectedRow();
+                    if (row >= 0) {
+                        row = table.convertRowIndexToModel(row); // Convert in case of sorting
+                        int carId = (int) model.getValueAt(row, 0);
+                        Car car = carDAO.getById(carId);
+                        if (car != null) {
+                            ui.components.CarDetailsDialog dialog = new ui.components.CarDetailsDialog(table, car);
+                            dialog.setVisible(true);
+                        }
+                    }
+                }
+            }
+        });
+
         // Buttons panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttonPanel.setBackground(new Color(245, 247, 250));
@@ -597,175 +616,32 @@ public class AdminDashboard extends JPanel {
 
     // Dialog for adding a new car
     private void showAddCarDialog(DefaultTableModel model) {
-        JPanel panel = new JPanel(new GridLayout(0, 2, 8, 8));
-        JTextField makeField = new JTextField();
-        JTextField modelField = new JTextField();
-        JTextField yearField = new JTextField();
-        JTextField licenseField = new JTextField();
-        JComboBox<String> statusBox = new JComboBox<>(new String[]{"available", "rented", "maintenance"});
-        JTextField specsField = new JTextField();
-        JTextField priceField = new JTextField();
-        panel.add(new JLabel("Make:"));
-        panel.add(makeField);
-        panel.add(new JLabel("Model:"));
-        panel.add(modelField);
-        panel.add(new JLabel("Year:"));
-        panel.add(yearField);
-        panel.add(new JLabel("License Plate:"));
-        panel.add(licenseField);
-        panel.add(new JLabel("Status:"));
-        panel.add(statusBox);
-        panel.add(new JLabel("Specs:"));
-        panel.add(specsField);
-        panel.add(new JLabel("Price/Day:"));
-        panel.add(priceField);
-        int result = JOptionPane.showConfirmDialog(this, panel, "Add New Car", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
-            try {
-                // Validate basic required fields
-                String make = makeField.getText().trim();
-                String modelName = modelField.getText().trim();
+        ui.components.CarFormDialog dialog = new ui.components.CarFormDialog(this, "Add New Car", null);
+        dialog.setVisible(true);
 
-                if (make.isEmpty() || modelName.isEmpty()) {
-                    Toast.error(this, "Make and model cannot be empty");
-                    return;
-                }
-
-                // Parse year with validation
-                int year;
-                try {
-                    year = Integer.parseInt(yearField.getText().trim());
-                    if (year < 1900 || year > 2100) {
-                        Toast.error(this, "Year must be between 1900 and 2100");
-                        return;
-                    }
-                } catch (NumberFormatException e) {
-                    Toast.error(this, "Invalid year format. Please enter a valid number.");
-                    return;
-                }
-
-                String license = licenseField.getText().trim();
-                String status = (String) statusBox.getSelectedItem();
-                String specs = specsField.getText().trim();
-
-                // Price handling with special validation for currency symbols and formatting
-                String priceText = priceField.getText().trim();
-
-                // Handle empty price field
-                if (priceText.isEmpty()) {
-                    priceText = "0.00";
-                }
-
-                // Clean the price text by removing currency symbols and other non-numeric characters
-                // except decimal point and digits
-                priceText = priceText.replaceAll("[^0-9.]", "");
-
-                // Parse price with proper error handling
-                java.math.BigDecimal price;
-                try {
-                    price = new java.math.BigDecimal(priceText);
-                } catch (NumberFormatException e) {
-                    Toast.error(this, "Invalid price format. Please enter numbers only (e.g., 50.00)");
-                    return;
-                }
-
-                Car car = new Car(0, make, modelName, year, license, status, specs, price);
-                if (carDAO.addCar(car)) {
-                    Toast.success(this, "Car added successfully.");
-                    loadCarsData(model);
-                } else {
-                    Toast.error(this, "Failed to add car.");
-                }
-            } catch (Exception ex) {
-                Toast.error(this, "Invalid input: " + ex.getMessage());
+        if (dialog.isApproved() && dialog.getResult() != null) {
+            Car car = dialog.getResult();
+            if (carDAO.addCar(car)) {
+                Toast.success(this, "Car added successfully.");
+                loadCarsData(model);
+            } else {
+                Toast.error(this, "Failed to add car.");
             }
         }
     }
 
     // Dialog for editing a car
     private void showEditCarDialog(DefaultTableModel model, Car car, int row) {
-        JPanel panel = new JPanel(new GridLayout(0, 2, 8, 8));
-        JTextField makeField = new JTextField(car.getMake());
-        JTextField modelField = new JTextField(car.getModel());
-        JTextField yearField = new JTextField(String.valueOf(car.getYear()));
-        JTextField licenseField = new JTextField(car.getLicensePlate());
-        JComboBox<String> statusBox = new JComboBox<>(new String[]{"available", "rented", "maintenance"});
-        statusBox.setSelectedItem(car.getStatus());
-        JTextField specsField = new JTextField(car.getSpecs());
-        JTextField priceField = new JTextField(car.getPricePerDay().toString());
-        panel.add(new JLabel("Make:"));
-        panel.add(makeField);
-        panel.add(new JLabel("Model:"));
-        panel.add(modelField);
-        panel.add(new JLabel("Year:"));
-        panel.add(yearField);
-        panel.add(new JLabel("License Plate:"));
-        panel.add(licenseField);
-        panel.add(new JLabel("Status:"));
-        panel.add(statusBox);
-        panel.add(new JLabel("Specs:"));
-        panel.add(specsField);
-        panel.add(new JLabel("Price/Day:"));
-        panel.add(priceField);
-        int result = JOptionPane.showConfirmDialog(this, panel, "Edit Car", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
-            try {
-                // Validate basic required fields
-                String make = makeField.getText().trim();
-                String modelName = modelField.getText().trim();
+        ui.components.CarFormDialog dialog = new ui.components.CarFormDialog(this, "Edit Car", car);
+        dialog.setVisible(true);
 
-                if (make.isEmpty() || modelName.isEmpty()) {
-                    Toast.error(this, "Make and model cannot be empty");
-                    return;
-                }
-
-                // Parse year with validation
-                int year;
-                try {
-                    year = Integer.parseInt(yearField.getText().trim());
-                    if (year < 1900 || year > 2100) {
-                        Toast.error(this, "Year must be between 1900 and 2100");
-                        return;
-                    }
-                } catch (NumberFormatException e) {
-                    Toast.error(this, "Invalid year format. Please enter a valid number.");
-                    return;
-                }
-
-                String license = licenseField.getText().trim();
-                String status = (String) statusBox.getSelectedItem();
-                String specs = specsField.getText().trim();
-
-                // Price handling with special validation for currency symbols and formatting
-                String priceText = priceField.getText().trim();
-
-                // Handle empty price field
-                if (priceText.isEmpty()) {
-                    priceText = "0.00";
-                }
-
-                // Clean the price text by removing currency symbols and other non-numeric characters
-                // except decimal point and digits
-                priceText = priceText.replaceAll("[^0-9.]", "");
-
-                // Parse price with proper error handling
-                java.math.BigDecimal price;
-                try {
-                    price = new java.math.BigDecimal(priceText);
-                } catch (NumberFormatException e) {
-                    Toast.error(this, "Invalid price format. Please enter numbers only (e.g., 50.00)");
-                    return;
-                }
-
-                Car updatedCar = new Car(car.getId(), make, modelName, year, license, status, specs, price);
-                if (carDAO.updateCar(updatedCar)) {
-                    Toast.success(this, "Car updated successfully.");
-                    loadCarsData(model);
-                } else {
-                    Toast.error(this, "Failed to update car.");
-                }
-            } catch (Exception ex) {
-                Toast.error(this, "Invalid input: " + ex.getMessage());
+        if (dialog.isApproved() && dialog.getResult() != null) {
+            Car updatedCar = dialog.getResult();
+            if (carDAO.updateCar(updatedCar)) {
+                Toast.success(this, "Car updated successfully.");
+                loadCarsData(model);
+            } else {
+                Toast.error(this, "Failed to update car.");
             }
         }
     }
