@@ -3,7 +3,6 @@ package ui;
 import java.awt.*;
 import javax.swing.*;
 import ui.components.KeyboardShortcuts;
-import ui.components.Toast;
 
 public class Main {
 
@@ -63,24 +62,36 @@ class RentopsAIMainFrame extends JFrame {
     }
 
     private void initializePanels() {
+        // Create login panel first; dashboards are created only after login/restore
         LoginPanel loginPanel = new LoginPanel(authService, () -> {
+            // On successful login, instantiate the appropriate dashboard so it picks up current user
             if (authService.isAdmin()) {
+                AdminDashboard adminDashboard = new AdminDashboard(authService, cardLayout, cardPanel);
+                cardPanel.add(adminDashboard, "admin");
                 cardLayout.show(cardPanel, "admin");
             } else {
+                UserDashboard userDashboard = new UserDashboard(authService, cardLayout, cardPanel);
+                cardPanel.add(userDashboard, "user");
                 cardLayout.show(cardPanel, "user");
             }
         });
 
-        AdminDashboard adminDashboard = new AdminDashboard(authService, cardLayout, cardPanel);
-        UserDashboard userDashboard = new UserDashboard(authService, cardLayout, cardPanel);
-
         cardPanel.add(loginPanel, "login");
-        cardPanel.add(adminDashboard, "admin");
-        cardPanel.add(userDashboard, "user");
-        
+
+        // If session restore succeeds, create the corresponding dashboard now
+        if (authService.isLoggedIn()) {
+            if (authService.isAdmin()) {
+                AdminDashboard adminDashboard = new AdminDashboard(authService, cardLayout, cardPanel);
+                cardPanel.add(adminDashboard, "admin");
+            } else {
+                UserDashboard userDashboard = new UserDashboard(authService, cardLayout, cardPanel);
+                cardPanel.add(userDashboard, "user");
+            }
+        }
+
         // Initialize keyboard shortcuts for the main frame
         KeyboardShortcuts.initialize(getRootPane());
-        
+
         // Show a hint about keyboard shortcuts after a short delay
         Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
         hintTimer.setRepeats(false);

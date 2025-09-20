@@ -11,6 +11,19 @@ import utils.PasswordHasher;
 
 public class UserDAO {
 
+    public boolean deleteUser(int id) {
+        String sql = "DELETE FROM users WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            int affected = stmt.executeUpdate();
+            return affected == 1;
+        } catch (SQLException e) {
+            System.err.println("Database error deleting user: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private String lastError = "";
 
     public String getLastError() {

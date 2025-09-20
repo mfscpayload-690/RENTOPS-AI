@@ -10,6 +10,7 @@ import ui.components.Toast;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.awt.image.BufferedImage;
 import java.awt.*;
 import java.util.List;
 
@@ -22,6 +23,12 @@ public class UserDashboard extends JPanel {
     private JPanel contentPanel;
     private CardLayout parentCardLayout;
     private JPanel parentCardPanel;
+
+    // Profile value labels for refresh
+    private JLabel lblProfileUsernameValue;
+    private JLabel lblProfileRoleValue;
+    private JLabel lblProfileOrgValue;
+    private JLabel lblProfileMemberSinceValue;
 
     public UserDashboard() {
         this(null, null, null);
@@ -41,6 +48,10 @@ public class UserDashboard extends JPanel {
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
 
+        // Create user info panel (top right)
+        JPanel userInfoPanel = createUserInfoPanel();
+        add(userInfoPanel, BorderLayout.NORTH);
+
         // Create main content area
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
@@ -59,6 +70,46 @@ public class UserDashboard extends JPanel {
 
         // Initialize keyboard shortcuts
         initializeKeyboardShortcuts();
+    }
+
+    private JPanel createUserInfoPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 8));
+        panel.setOpaque(false);
+        String username = "Unknown";
+        String role = "user";
+        if (authService != null && authService.getCurrentUser() != null) {
+            if (authService.getCurrentUser().getUsername() != null && !authService.getCurrentUser().getUsername().isEmpty()) {
+                username = authService.getCurrentUser().getUsername();
+            }
+            if (authService.getCurrentUser().getRole() != null && !authService.getCurrentUser().getRole().isEmpty()) {
+                role = authService.getCurrentUser().getRole();
+            }
+        }
+        JLabel nameLabel = new JLabel(username);
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        nameLabel.setForeground(new Color(41, 128, 185));
+        // Load icon from classpath with robust fallback
+        String resourceName = "/icons/" + ("admin".equalsIgnoreCase(role) ? "Admin.png" : "User.png");
+        ImageIcon icon = null;
+        java.net.URL resourceUrl = getClass().getResource(resourceName);
+        if (resourceUrl != null) {
+            icon = new ImageIcon(resourceUrl);
+            if (icon.getIconWidth() > 32 || icon.getIconHeight() > 32) {
+                Image img = icon.getImage().getScaledInstance(28, 28, Image.SCALE_SMOOTH);
+                icon = new ImageIcon(img);
+            }
+        }
+        if (icon == null || icon.getIconWidth() <= 0 || icon.getIconHeight() <= 0) {
+            Icon fallback = UIManager.getIcon("OptionPane.informationIcon");
+            Image img = new BufferedImage(28, 28, BufferedImage.TYPE_INT_ARGB);
+            fallback.paintIcon(null, img.getGraphics(), 0, 0);
+            icon = new ImageIcon(img);
+        }
+        JLabel iconLabel = new JLabel(icon);
+        iconLabel.setToolTipText(role.substring(0, 1).toUpperCase() + role.substring(1));
+        panel.add(iconLabel);
+        panel.add(nameLabel);
+        return panel;
     }
 
     private JPanel createSidebar() {
@@ -285,9 +336,42 @@ public class UserDashboard extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        // Sample data (would load from database based on current user)
-        model.addRow(new Object[]{"1", "Toyota Corolla 2022", "2023-12-01", "2023-12-05", "Completed", "$200.00"});
-        model.addRow(new Object[]{"2", "Honda Civic 2023", "2023-12-15", "2023-12-20", "Confirmed", "$275.00"});
+        // Load bookings for current user from database
+        SwingWorker<List<models.Booking>, Void> worker = new SwingWorker<List<models.Booking>, Void>() {
+            @Override
+            protected List<models.Booking> doInBackground() throws Exception {
+                if (authService != null && authService.getCurrentUser() != null) {
+                    int userId = authService.getCurrentUser().getId();
+                    return bookingDAO.getBookingsByUserId(userId);
+                }
+                return java.util.Collections.emptyList();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<models.Booking> bookings = get();
+                    model.setRowCount(0);
+                    for (models.Booking booking : bookings) {
+                        // Fetch car info for display
+                        models.Car car = carDAO.getById(booking.getCarId());
+                        String carName = car != null ? car.getMake() + " " + car.getModel() + " " + car.getYear() : "Car ID " + booking.getCarId();
+                        model.addRow(new Object[]{
+                            booking.getId(),
+                            carName,
+                            booking.getStartDate(),
+                            booking.getEndDate(),
+                            booking.getStatus(),
+                            "$" + booking.getTotalPrice()
+                        });
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Error loading bookings: " + e.getMessage());
+                }
+            }
+        };
+        worker.execute();
 
         return panel;
     }
@@ -309,31 +393,52 @@ public class UserDashboard extends JPanel {
         // Profile information
         gbc.gridwidth = 1;
         gbc.anchor = GridBagConstraints.WEST;
-
+        // Labels
         gbc.gridy++;
         gbc.gridx = 0;
         panel.add(new JLabel("Username:"), gbc);
         gbc.gridx = 1;
-        panel.add(new JLabel("Current User"), gbc);
+        lblProfileUsernameValue = new JLabel("Unknown");
+        panel.add(lblProfileUsernameValue, gbc);
 
         gbc.gridy++;
         gbc.gridx = 0;
         panel.add(new JLabel("Role:"), gbc);
         gbc.gridx = 1;
-        panel.add(new JLabel("User"), gbc);
+        lblProfileRoleValue = new JLabel("User");
+        panel.add(lblProfileRoleValue, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 0;
+        panel.add(new JLabel("Organization:"), gbc);
+        gbc.gridx = 1;
+        lblProfileOrgValue = new JLabel("-");
+        panel.add(lblProfileOrgValue, gbc);
 
         gbc.gridy++;
         gbc.gridx = 0;
         panel.add(new JLabel("Member Since:"), gbc);
         gbc.gridx = 1;
-        panel.add(new JLabel("January 2023"), gbc);
+        lblProfileMemberSinceValue = new JLabel("-");
+        panel.add(lblProfileMemberSinceValue, gbc);
 
-        // Logout button
+        // Actions: Refresh + Logout
         gbc.gridy++;
         gbc.gridx = 0;
         gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
         gbc.insets = new Insets(40, 20, 20, 20);
+
+        JPanel actionsPanel = new JPanel(new FlowLayout());
+        actionsPanel.setBackground(new Color(245, 247, 250));
+
+        JButton refreshButton = new JButton("Refresh Profile");
+        refreshButton.setBackground(new Color(52, 152, 219));
+        refreshButton.setForeground(Color.WHITE);
+        refreshButton.setFocusPainted(false);
+        refreshButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        refreshButton.setPreferredSize(new Dimension(170, 40));
+        refreshButton.addActionListener(e -> refreshProfileInfo());
 
         JButton logoutButton = new JButton("Logout");
         logoutButton.setBackground(new Color(231, 76, 60));
@@ -341,12 +446,55 @@ public class UserDashboard extends JPanel {
         logoutButton.setFocusPainted(false);
         logoutButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         logoutButton.setPreferredSize(new Dimension(150, 40));
-
         logoutButton.addActionListener(e -> showLogoutDialog());
 
-        panel.add(logoutButton, gbc);
+        actionsPanel.add(refreshButton);
+        actionsPanel.add(Box.createHorizontalStrut(16));
+        actionsPanel.add(logoutButton);
+
+        panel.add(actionsPanel, gbc);
+
+        // Initialize with current values
+        refreshProfileInfo();
 
         return panel;
+    }
+
+    private void refreshProfileInfo() {
+        String username = "Unknown";
+        String role = "user";
+        String organization = "-";
+        String memberSince = "-";
+        if (authService != null && authService.getCurrentUser() != null) {
+            if (authService.getCurrentUser().getUsername() != null && !authService.getCurrentUser().getUsername().isEmpty()) {
+                username = authService.getCurrentUser().getUsername();
+            }
+            if (authService.getCurrentUser().getRole() != null && !authService.getCurrentUser().getRole().isEmpty()) {
+                role = authService.getCurrentUser().getRole();
+            }
+            if (authService.getCurrentUser().getOrganization() != null && !authService.getCurrentUser().getOrganization().isEmpty()) {
+                organization = authService.getCurrentUser().getOrganization();
+            }
+            java.time.LocalDateTime createdAt = authService.getCurrentUser().getCreatedAt();
+            if (createdAt != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy, HH:mm");
+                memberSince = createdAt.format(fmt);
+            }
+        }
+
+        if (lblProfileUsernameValue != null) {
+            lblProfileUsernameValue.setText(username);
+        }
+        if (lblProfileRoleValue != null) {
+            String cap = role.substring(0, 1).toUpperCase() + role.substring(1);
+            lblProfileRoleValue.setText(cap);
+        }
+        if (lblProfileOrgValue != null) {
+            lblProfileOrgValue.setText(organization);
+        }
+        if (lblProfileMemberSinceValue != null) {
+            lblProfileMemberSinceValue.setText(memberSince);
+        }
     }
 
     private void showLogoutDialog() {
