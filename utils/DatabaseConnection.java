@@ -11,28 +11,32 @@ public class DatabaseConnection {
 
     private static final String CONFIG_PATH = "config/db.properties";
 
+    // Cached config
+    private static final Properties DB_PROPS = new Properties();
+    private static String URL;
+    private static String USER;
+    private static String PASSWORD;
+
+    static {
+        try (FileInputStream fis = new FileInputStream(CONFIG_PATH)) {
+            DB_PROPS.load(fis);
+            URL = DB_PROPS.getProperty("db.url");
+            USER = DB_PROPS.getProperty("db.user");
+            PASSWORD = DB_PROPS.getProperty("db.password");
+            // Load driver once
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError("Failed to load DB config: " + e.getMessage());
+        } catch (ClassNotFoundException e) {
+            throw new ExceptionInInitializerError("MySQL JDBC Driver not found: " + e.getMessage());
+        }
+    }
+
     private DatabaseConnection() {
     }
 
-    // Returns a NEW connection each time; callers should close it (try-with-resources).
-    // This avoids issues from sharing a single static Connection across threads and DAOs.
+    // Return a new connection each time; config and driver are cached.
     public static Connection getConnection() throws SQLException {
-        try {
-            // Ensure MySQL JDBC Driver is loaded
-            Class.forName("com.mysql.cj.jdbc.Driver");
-
-            Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream(CONFIG_PATH)) {
-                props.load(fis);
-            }
-            String url = props.getProperty("db.url");
-            String user = props.getProperty("db.user");
-            String password = props.getProperty("db.password");
-            return DriverManager.getConnection(url, user, password);
-        } catch (IOException e) {
-            throw new SQLException("Failed to load DB config", e);
-        } catch (ClassNotFoundException e) {
-            throw new SQLException("MySQL JDBC Driver not found", e);
-        }
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }

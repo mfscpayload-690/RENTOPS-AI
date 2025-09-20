@@ -30,6 +30,10 @@ public class UserDashboard extends JPanel {
     private JLabel lblProfileOrgValue;
     private JLabel lblProfileMemberSinceValue;
 
+    // Top bar user info references for refresh
+    private JLabel topUserNameLabel;
+    private JLabel topUserIconLabel;
+
     public UserDashboard() {
         this(null, null, null);
     }
@@ -75,6 +79,27 @@ public class UserDashboard extends JPanel {
     private JPanel createUserInfoPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 8));
         panel.setOpaque(false);
+        topUserNameLabel = new JLabel();
+        topUserNameLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        topUserNameLabel.setForeground(new Color(41, 128, 185));
+        topUserIconLabel = new JLabel();
+
+        // Initial fill from authService
+        refreshTopUserInfo();
+
+        // Refresh button to re-sync user info
+        JButton btnRefresh = new JButton("Refresh");
+        btnRefresh.setFocusPainted(false);
+        btnRefresh.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnRefresh.addActionListener(e -> refreshTopUserInfo());
+
+        panel.add(btnRefresh);
+        panel.add(topUserIconLabel);
+        panel.add(topUserNameLabel);
+        return panel;
+    }
+
+    private void refreshTopUserInfo() {
         String username = "Unknown";
         String role = "user";
         if (authService != null && authService.getCurrentUser() != null) {
@@ -85,15 +110,23 @@ public class UserDashboard extends JPanel {
                 role = authService.getCurrentUser().getRole();
             }
         }
-        JLabel nameLabel = new JLabel(username);
-        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        nameLabel.setForeground(new Color(41, 128, 185));
-        // Load icon from classpath with robust fallback
-        String resourceName = "/icons/" + ("admin".equalsIgnoreCase(role) ? "Admin.png" : "User.png");
+        if (topUserNameLabel != null) {
+            topUserNameLabel.setText(username);
+        }
+        if (topUserIconLabel != null) {
+            ImageIcon icon = getRoleIcon(role);
+            topUserIconLabel.setIcon(icon);
+            String tip = role != null && !role.isEmpty() ? role.substring(0, 1).toUpperCase() + role.substring(1) : "User";
+            topUserIconLabel.setToolTipText(tip);
+        }
+    }
+
+    private ImageIcon getRoleIcon(String role) {
+        String res = "/icons/" + ("admin".equalsIgnoreCase(role) ? "Admin.png" : "User.png");
         ImageIcon icon = null;
-        java.net.URL resourceUrl = getClass().getResource(resourceName);
-        if (resourceUrl != null) {
-            icon = new ImageIcon(resourceUrl);
+        java.net.URL url = getClass().getResource(res);
+        if (url != null) {
+            icon = new ImageIcon(url);
             if (icon.getIconWidth() > 32 || icon.getIconHeight() > 32) {
                 Image img = icon.getImage().getScaledInstance(28, 28, Image.SCALE_SMOOTH);
                 icon = new ImageIcon(img);
@@ -105,11 +138,7 @@ public class UserDashboard extends JPanel {
             fallback.paintIcon(null, img.getGraphics(), 0, 0);
             icon = new ImageIcon(img);
         }
-        JLabel iconLabel = new JLabel(icon);
-        iconLabel.setToolTipText(role.substring(0, 1).toUpperCase() + role.substring(1));
-        panel.add(iconLabel);
-        panel.add(nameLabel);
-        return panel;
+        return icon;
     }
 
     private JPanel createSidebar() {

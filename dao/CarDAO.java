@@ -12,6 +12,8 @@ public class CarDAO {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT * FROM cars ORDER BY make, model";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+            // Force metadata initialization to avoid NPE in some driver versions
+            rs.getMetaData();
             while (rs.next()) {
                 cars.add(new Car(
                         rs.getInt("id"),
@@ -35,6 +37,8 @@ public class CarDAO {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT * FROM cars WHERE status = 'available' ORDER BY make, model";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+            // Force metadata initialization to avoid NPE in some driver versions
+            rs.getMetaData();
             while (rs.next()) {
                 cars.add(new Car(
                         rs.getInt("id"),

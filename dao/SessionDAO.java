@@ -38,7 +38,8 @@ public class SessionDAO {
     public UserSession getActiveSession() {
         String sql = "SELECT * FROM user_sessions WHERE is_active = TRUE ORDER BY last_accessed DESC LIMIT 1";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
-
+            // Force metadata initialization to avoid NPE in some driver versions
+            rs.getMetaData();
             if (rs.next()) {
                 return new UserSession(
                         rs.getInt("id"),
@@ -59,19 +60,20 @@ public class SessionDAO {
     public UserSession getSessionByToken(String sessionToken) {
         String sql = "SELECT * FROM user_sessions WHERE session_token = ? AND is_active = TRUE";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setString(1, sessionToken);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return new UserSession(
-                        rs.getInt("id"),
-                        rs.getInt("user_id"),
-                        rs.getString("session_token"),
-                        rs.getTimestamp("created_at").toLocalDateTime(),
-                        rs.getTimestamp("last_accessed").toLocalDateTime(),
-                        rs.getBoolean("is_active")
-                );
+            try (ResultSet rs = stmt.executeQuery()) {
+                // Force metadata initialization to avoid NPE in some driver versions
+                rs.getMetaData();
+                if (rs.next()) {
+                    return new UserSession(
+                            rs.getInt("id"),
+                            rs.getInt("user_id"),
+                            rs.getString("session_token"),
+                            rs.getTimestamp("created_at").toLocalDateTime(),
+                            rs.getTimestamp("last_accessed").toLocalDateTime(),
+                            rs.getBoolean("is_active")
+                    );
+                }
             }
         } catch (SQLException e) {
             System.err.println("Database error getting session by token: " + e.getMessage());
