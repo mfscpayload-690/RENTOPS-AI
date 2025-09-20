@@ -1,130 +1,137 @@
-# RENTOPS-AI  
-**An AI-Integrated Java Desktop Application for Fleet and Rental Operations**  
+# RENTOPS-AI
+Modern Java Swing application for rental car operations with a clean DAO/MVC structure and future-friendly AI/NLP integration points.
 
 ---
 
-## 📖 Overview  
-**RENTOPS-AI** is a **Java-based desktop application** designed to optimize rental car business operations by integrating **intelligent automation** and **AI-driven insights**.  
+## Overview
+RENTOPS-AI is a desktop app that helps manage cars, users, and bookings. It uses:
+- Java Swing for the UI
+- JDBC for database access (MySQL/MariaDB)
+- Clear layering: models → DAO → services → UI
 
-The system supports:  
-- **Fleet management**  
-- **Booking and customer handling**  
-- **Maintenance tracking**  
-- **Reporting and analytics**  
+Recent work includes:
+- New field total_km_driven for cars (schema + DAO + data)
+- Inventory expansion (now 20 cars, 19 available)
+- Utilities to run SQL scripts and ad‑hoc queries from the command line
+- Persistent login sessions via a user_sessions table
 
-It also leverages **machine learning models** for:  
-- Demand prediction  
-- Pricing optimization  
-- Anomaly detection in vehicle usage  
-
-This project was developed as part of the **B.Tech Computer Science and Engineering curriculum (KTU)** by **Group 2**, aiming to solve real-world challenges in the rental car industry.  
+AI features are planned and kept decoupled via interfaces so they can be added without touching core flows.
 
 ---
 
-## ✨ Features  
-- **Fleet Management** – Add, update, and track vehicles with availability status.  
-- **Booking Management** – Reservation, cancellation, and customer tracking.  
-- **AI-Driven Insights** –  
-  - Predict peak rental demand.  
-  - Provide dynamic pricing suggestions.  
-  - Detect anomalies in vehicle usage.  
-- **Customer Records** – Maintain rental history and profiles.  
-- **Maintenance Alerts** – Notify for servicing schedules and issues.  
-- **Reports and Analytics** – Revenue, fleet utilization, and customer trend analysis.  
+## Features
+- Fleet management (add/update/list cars, availability)
+- User and admin roles; simple dashboards
+- Bookings (basic CRUD in DAO layer)
+- Secure auth (salted password hashing) with optional persistent sessions
+- Utilities: SqlScriptRunner and DbQueryRunner for DB tasks
 
 ---
 
-## 🛠 Technology Stack  
-- **Programming Language**: Java (Swing / JavaFX for GUI)  
-- **Database**: MySQL (JDBC for connectivity)  
-- **Artificial Intelligence**: Integrated ML models for predictions and optimization  
-- **Development Tools**: IntelliJ IDEA / Eclipse, Maven, Git  
-- **Additional Libraries**: Apache POI (report generation), JFreeChart (data visualization)  
+## Tech Stack
+- Java 11+
+- Swing (desktop UI)
+- JDBC with MySQL/MariaDB
+- MySQL Connector/J 9.4.0 (mysql-connector-j-9.4.0.jar in project root)
+
+Note: This project currently builds without Maven/Gradle. Commands below show manual compile/run steps for Windows (PowerShell/CMD).
 
 ---
 
-## 📂 Project Structure  
+## Project Structure (actual)
 ```
 RENTOPS-AI/
-│── src/                     # Java source code
-│   ├── ui/                  # GUI components
-│   ├── database/            # Database connectivity and queries
-│   ├── ai/                  # AI/ML modules
-│   ├── models/              # Core business models (Car, Customer, Booking)
-│   └── utils/               # Utility classes
-│
-│── resources/               # Config files, icons, images
-│── docs/                    # Documentation and research reports
-│── reports/                 # System-generated reports
-│── README.md                # Project documentation
-│── LICENSE                  # License file
+├── dao/                # DAO classes (CarDAO, UserDAO, BookingDAO, SessionDAO)
+├── models/             # POJOs (Car, User, Booking, Payment, etc.)
+├── services/           # AuthService, SessionManager
+├── ui/                 # Swing panels and Main entry point
+├── utils/              # DatabaseConnection, SqlScriptRunner, DbQueryRunner
+├── config/             # db.properties
+├── bin/                # Compiled .class output
+├── *.sql               # Database setup/migration/data scripts
+└── mysql-connector-j-9.4.0.jar
 ```
 
-## 👥 Team Members
+---
 
-- Aleena Mary Joseph
+## Database
+Schema name: rentops_ai
 
-- Abhijit P
+Key tables:
+- users
+- cars (includes total_km_driven INT NOT NULL DEFAULT 0)
+- bookings
+- user_sessions (for persistent login)
 
-- Harshitha Hari
+Included SQL scripts:
+- db_setup.sql – create schema and core tables (cars includes total_km_driven)
+- add_sessions_table.sql – create user_sessions table and indexes
+- alter_table.sql – migration helper to add total_km_driven to existing installs
+- add_new_cars.sql – adds 13 ready-to-rent cars with mileage and pricing
+- mysql_setup_commands.sql – convenience MySQL commands
 
-- Sween Shaji
+Run scripts one of two ways:
+1) In your MySQL/MariaDB client (Workbench/CLI): SOURCE path/to/script.sql
+2) From this project using our runner:
 
-- Aravind Lal
+```powershell
+# Compile the utils once (if needed)
+javac -d bin -cp ".;mysql-connector-j-9.4.0.jar" utils\*.java
 
-## 🎯 Problem Statement
-
-Car rental businesses face recurring challenges:
-
-- Inefficient reservation and cancellation management.
-
-- Lack of predictive models for demand and dynamic pricing.
-
-- Manual and error-prone vehicle maintenance tracking.
-
-- Difficulty in detecting irregular or fraudulent rental activities.
-
-- RENTOPS-AI addresses these challenges by integrating robust software features with AI-powered analytics, creating a reliable and efficient rental management solution.
-
-## ⚙️ Installation and Setup
-
-#Prerequisites
-
-- Java 11 or above
-
-- MySQL 8.0 or above || MariaDB
-
-- Maven (for dependency management)
-
-## Steps
-
-- Clone the repository:
-
-```
-git clone https://github.com/mfscpayload-690/RENTOPS-AI.git`
-cd RENTOPS-AI
+# Run any SQL script
+java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "db_setup.sql"
+java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "add_sessions_table.sql"
+java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "alter_table.sql"
+java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "add_new_cars.sql"
 ```
 
-- Configure the database:
-
-- Import the schema from docs/schema.sql.
-
-- Update `db.properties` with database credentials.
-
-- Build and run the project:
-```
-mvn clean install
-mvn exec:java
+Ad‑hoc query helper:
+```powershell
+java -cp "bin;mysql-connector-j-9.4.0.jar" utils.DbQueryRunner "SELECT COUNT(*) FROM cars;"
 ```
 
-## 📊 Use Cases
+Database config lives in config/db.properties:
+```
+db.url=jdbc:mysql://localhost:3306/rentops_ai?useSSL=false&allowPublicKeyRetrieval=true
+db.user=<your_user>
+db.password=<your_password>
+```
+Please do not commit real credentials.
 
-- Rental Agencies – Streamline operations and optimize revenue.
+---
 
-- Corporate Fleet Managers – Ensure proper utilization and timely maintenance.
+## Build and Run (Windows)
+From a PowerShell or CMD prompt in the project root:
 
-- Startups – Implement AI-driven features in rental services with minimal overhead.
+```powershell
+# 1) Compile
+javac -d bin -cp ".;mysql-connector-j-9.4.0.jar" dao\*.java models\*.java services\*.java ui\*.java utils\*.java
 
-## 📜 License
+# 2) Run
+java -cp "bin;mysql-connector-j-9.4.0.jar" ui.Main
+```
 
-This project is licensed under the _**MIT License**_ – see the LICENSE file for details.
+If you see driver or connection errors:
+- Ensure mysql-connector-j-9.4.0.jar exists in the project root
+- Verify config/db.properties points to a running MySQL/MariaDB instance
+- Confirm the rentops_ai schema exists (run db_setup.sql)
+
+---
+
+## Notes on Authentication
+- Passwords are stored as salted hashes; never store plain text passwords
+- The seed admin in db_setup.sql is a placeholder; create users via the app’s Register flow or insert a properly hashed password
+- Session persistence uses user_sessions; you can disable by not creating that table
+
+---
+
+## Recent Changes (highlights)
+- Added total_km_driven to cars table and model with DAO compatibility checks
+- Created utilities: SqlScriptRunner and DbQueryRunner
+- Added user_sessions table and SessionManager for persistent login
+- Inserted 13 new cars (total inventory: 20; available: 19)
+
+---
+
+## License
+MIT — see LICENSE
