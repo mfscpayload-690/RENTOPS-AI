@@ -622,13 +622,53 @@ public class AdminDashboard extends JPanel {
         int result = JOptionPane.showConfirmDialog(this, panel, "Add New Car", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             try {
+                // Validate basic required fields
                 String make = makeField.getText().trim();
                 String modelName = modelField.getText().trim();
-                int year = Integer.parseInt(yearField.getText().trim());
+
+                if (make.isEmpty() || modelName.isEmpty()) {
+                    Toast.error(this, "Make and model cannot be empty");
+                    return;
+                }
+
+                // Parse year with validation
+                int year;
+                try {
+                    year = Integer.parseInt(yearField.getText().trim());
+                    if (year < 1900 || year > 2100) {
+                        Toast.error(this, "Year must be between 1900 and 2100");
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.error(this, "Invalid year format. Please enter a valid number.");
+                    return;
+                }
+
                 String license = licenseField.getText().trim();
                 String status = (String) statusBox.getSelectedItem();
                 String specs = specsField.getText().trim();
-                java.math.BigDecimal price = new java.math.BigDecimal(priceField.getText().trim());
+
+                // Price handling with special validation for currency symbols and formatting
+                String priceText = priceField.getText().trim();
+
+                // Handle empty price field
+                if (priceText.isEmpty()) {
+                    priceText = "0.00";
+                }
+
+                // Clean the price text by removing currency symbols and other non-numeric characters
+                // except decimal point and digits
+                priceText = priceText.replaceAll("[^0-9.]", "");
+
+                // Parse price with proper error handling
+                java.math.BigDecimal price;
+                try {
+                    price = new java.math.BigDecimal(priceText);
+                } catch (NumberFormatException e) {
+                    Toast.error(this, "Invalid price format. Please enter numbers only (e.g., 50.00)");
+                    return;
+                }
+
                 Car car = new Car(0, make, modelName, year, license, status, specs, price);
                 if (carDAO.addCar(car)) {
                     Toast.success(this, "Car added successfully.");
@@ -670,13 +710,53 @@ public class AdminDashboard extends JPanel {
         int result = JOptionPane.showConfirmDialog(this, panel, "Edit Car", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             try {
+                // Validate basic required fields
                 String make = makeField.getText().trim();
                 String modelName = modelField.getText().trim();
-                int year = Integer.parseInt(yearField.getText().trim());
+
+                if (make.isEmpty() || modelName.isEmpty()) {
+                    Toast.error(this, "Make and model cannot be empty");
+                    return;
+                }
+
+                // Parse year with validation
+                int year;
+                try {
+                    year = Integer.parseInt(yearField.getText().trim());
+                    if (year < 1900 || year > 2100) {
+                        Toast.error(this, "Year must be between 1900 and 2100");
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.error(this, "Invalid year format. Please enter a valid number.");
+                    return;
+                }
+
                 String license = licenseField.getText().trim();
                 String status = (String) statusBox.getSelectedItem();
                 String specs = specsField.getText().trim();
-                java.math.BigDecimal price = new java.math.BigDecimal(priceField.getText().trim());
+
+                // Price handling with special validation for currency symbols and formatting
+                String priceText = priceField.getText().trim();
+
+                // Handle empty price field
+                if (priceText.isEmpty()) {
+                    priceText = "0.00";
+                }
+
+                // Clean the price text by removing currency symbols and other non-numeric characters
+                // except decimal point and digits
+                priceText = priceText.replaceAll("[^0-9.]", "");
+
+                // Parse price with proper error handling
+                java.math.BigDecimal price;
+                try {
+                    price = new java.math.BigDecimal(priceText);
+                } catch (NumberFormatException e) {
+                    Toast.error(this, "Invalid price format. Please enter numbers only (e.g., 50.00)");
+                    return;
+                }
+
                 Car updatedCar = new Car(car.getId(), make, modelName, year, license, status, specs, price);
                 if (carDAO.updateCar(updatedCar)) {
                     Toast.success(this, "Car updated successfully.");
@@ -710,7 +790,7 @@ public class AdminDashboard extends JPanel {
                             car.getYear(),
                             car.getLicensePlate(),
                             car.getStatus(),
-                            "$" + formatMoney(car.getPricePerDay())
+                            "₹" + formatMoney(car.getPricePerDay())
                         });
                     }
                 } catch (Exception e) {
@@ -799,7 +879,7 @@ public class AdminDashboard extends JPanel {
                             booking.getStartDate(),
                             booking.getEndDate(),
                             booking.getStatus(),
-                            "$" + booking.getTotalPrice()
+                            "₹" + booking.getTotalPrice()
                         });
                     }
                 } catch (Exception e) {

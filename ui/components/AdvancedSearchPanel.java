@@ -135,7 +135,7 @@ public class AdvancedSearchPanel extends JPanel {
         priceRangeSlider.setPaintLabels(true);
         priceRangeSlider.setOpaque(false);
 
-        priceRangeLabel = new JLabel("Max Price: $200/day");
+        priceRangeLabel = new JLabel("Max Price: ₹200/day");
 
         pricePanel.add(new JLabel("Price:"), BorderLayout.NORTH);
         pricePanel.add(priceRangeSlider, BorderLayout.CENTER);
@@ -173,7 +173,7 @@ public class AdvancedSearchPanel extends JPanel {
 
         priceRangeSlider.addChangeListener(e -> {
             int value = priceRangeSlider.getValue();
-            priceRangeLabel.setText("Max Price: $" + value + "/day");
+            priceRangeLabel.setText("Max Price: ₹" + value + "/day");
             currentCriteria.maxPrice = new BigDecimal(value);
             if (!priceRangeSlider.getValueIsAdjusting()) {
                 notifySearchListeners();

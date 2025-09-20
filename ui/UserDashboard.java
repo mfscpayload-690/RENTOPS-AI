@@ -328,7 +328,7 @@ public class UserDashboard extends JPanel {
                             car.getMake(),
                             car.getModel(),
                             car.getYear(),
-                            "$" + car.getPricePerDay() + "/day",
+                            "₹" + car.getPricePerDay() + "/day",
                             car.getStatus(),
                             car.getSpecs()
                         });
@@ -391,7 +391,7 @@ public class UserDashboard extends JPanel {
                             booking.getStartDate(),
                             booking.getEndDate(),
                             booking.getStatus(),
-                            "$" + booking.getTotalPrice()
+                            "₹" + booking.getTotalPrice()
                         });
                     }
                 } catch (Exception e) {
