@@ -1,7 +1,10 @@
 package dao;
 
-import java.sql.*;
-import java.time.LocalDateTime;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import models.User;
 import utils.DatabaseConnection;
 import utils.PasswordHasher;
@@ -43,7 +46,7 @@ public class UserDAO {
             stmt.setString(2, hash + ":" + salt);
             stmt.setString(3, role);
             stmt.setString(4, organization != null ? organization.trim() : null);
-            stmt.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
             boolean result = stmt.executeUpdate() == 1;
             if (result) {
                 lastError = "";
@@ -127,5 +130,26 @@ public class UserDAO {
             System.err.println("Database error retrieving user: " + e.getMessage());
         }
         return null;
+    }
+
+    public java.util.List<User> getAllUsers() {
+        java.util.List<User> users = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM users ORDER BY created_at DESC";
+        try (Connection conn = utils.DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                users.add(new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("password_hash"),
+                        rs.getString("role"),
+                        rs.getString("organization"),
+                        rs.getTimestamp("created_at").toLocalDateTime()
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("Database error getting users: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return users;
     }
 }

@@ -46,6 +46,10 @@ public class AdminDashboard extends JPanel {
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
 
+        // Create user info panel (top right)
+        JPanel userInfoPanel = createUserInfoPanel();
+        add(userInfoPanel, BorderLayout.NORTH);
+
         // Create main content area
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
@@ -174,43 +178,66 @@ public class AdminDashboard extends JPanel {
     }
 
     private void loadStatistics(JPanel overviewPanel) {
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+        SwingWorker<int[], Void> worker = new SwingWorker<int[], Void>() {
             @Override
-            protected Void doInBackground() throws Exception {
-                // This would typically load from database
-                return null;
+            protected int[] doInBackground() {
+                int totalUsers = 0;
+                int totalCars = 0;
+                int activeBookings = 0;
+                int availableCars = 0;
+                try {
+                    // Fetch users
+                    java.util.List<User> users = userDAO.getAllUsers();
+                    totalUsers = users.size();
+                    // Fetch cars
+                    java.util.List<Car> cars = carDAO.getAllCars();
+                    totalCars = cars.size();
+                    // Available cars
+                    java.util.List<Car> available = carDAO.getAvailableCars();
+                    availableCars = available.size();
+                    // Fetch bookings
+                    java.util.List<Booking> bookings = bookingDAO.getAllBookings();
+                    activeBookings = (int) bookings.stream().filter(b -> b.getStatus() != null && b.getStatus().toLowerCase().contains("active")).count();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                return new int[]{totalUsers, totalCars, activeBookings, availableCars};
             }
 
             @Override
             protected void done() {
-                // Update the statistics (simplified for now)
-                Component[] components = overviewPanel.getComponents();
-                for (Component comp : components) {
-                    if (comp instanceof JPanel) {
-                        JPanel card = (JPanel) comp;
-                        if (card.getComponentCount() >= 2) {
-                            Component valueComp = card.getComponent(1);
-                            if (valueComp instanceof JLabel) {
-                                JLabel titleComp = (JLabel) card.getComponent(0);
-                                String title = titleComp.getText();
-                                JLabel valueLabel = (JLabel) valueComp;
-                                switch (title) {
-                                    case "Total Users":
-                                        valueLabel.setText("25");
-                                        break;
-                                    case "Total Cars":
-                                        valueLabel.setText("15");
-                                        break;
-                                    case "Active Bookings":
-                                        valueLabel.setText("8");
-                                        break;
-                                    case "Available Cars":
-                                        valueLabel.setText("7");
-                                        break;
+                try {
+                    int[] stats = get();
+                    Component[] components = overviewPanel.getComponents();
+                    for (Component comp : components) {
+                        if (comp instanceof JPanel) {
+                            JPanel card = (JPanel) comp;
+                            if (card.getComponentCount() >= 2) {
+                                Component valueComp = card.getComponent(1);
+                                if (valueComp instanceof JLabel) {
+                                    JLabel titleComp = (JLabel) card.getComponent(0);
+                                    String title = titleComp.getText();
+                                    JLabel valueLabel = (JLabel) valueComp;
+                                    switch (title) {
+                                        case "Total Users":
+                                            valueLabel.setText(String.valueOf(stats[0]));
+                                            break;
+                                        case "Total Cars":
+                                            valueLabel.setText(String.valueOf(stats[1]));
+                                            break;
+                                        case "Active Bookings":
+                                            valueLabel.setText(String.valueOf(stats[2]));
+                                            break;
+                                        case "Available Cars":
+                                            valueLabel.setText(String.valueOf(stats[3]));
+                                            break;
+                                    }
                                 }
                             }
                         }
                     }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                 }
             }
         };
@@ -240,10 +267,33 @@ public class AdminDashboard extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        // Load users (simplified)
-        model.addRow(new Object[]{"1", "admin", "admin", "2023-01-01"});
-        model.addRow(new Object[]{"2", "john_doe", "user", "2023-01-15"});
-        model.addRow(new Object[]{"3", "jane_smith", "user", "2023-02-01"});
+        // Load users from database
+        SwingWorker<List<User>, Void> worker = new SwingWorker<List<User>, Void>() {
+            @Override
+            protected List<User> doInBackground() {
+                return userDAO.getAllUsers();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<User> users = get();
+                    model.setRowCount(0);
+                    for (User user : users) {
+                        model.addRow(new Object[]{
+                            user.getId(),
+                            user.getUsername(),
+                            user.getRole(),
+                            user.getCreatedAt()
+                        });
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Error loading users: " + e.getMessage());
+                }
+            }
+        };
+        worker.execute();
 
         return panel;
     }
@@ -304,7 +354,7 @@ public class AdminDashboard extends JPanel {
 
         panel.add(buttonPanel, BorderLayout.SOUTH);
 
-        // Load initial data
+        // Load initial data from CarDAO
         loadCarsData(model);
 
         return panel;
@@ -480,5 +530,32 @@ public class AdminDashboard extends JPanel {
         });
         toastTimer.setRepeats(false);
         toastTimer.start();
+    }
+
+    private JPanel createUserInfoPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 8));
+        panel.setOpaque(false);
+        String username = "Unknown";
+        String role = "user";
+        if (authService != null && authService.getCurrentUser() != null) {
+            username = authService.getCurrentUser().getUsername();
+            role = authService.getCurrentUser().getRole();
+        }
+        JLabel nameLabel = new JLabel(username);
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        nameLabel.setForeground(new Color(52, 73, 94));
+        // Load icon
+        String iconPath = "D:/You know what PROJECTZZ/RENTOPS-AI/icons/" + ("admin".equalsIgnoreCase(role) ? "admin.png" : "user.png");
+        ImageIcon icon = new ImageIcon(iconPath);
+        // Resize icon if needed
+        if (icon.getIconWidth() > 32 || icon.getIconHeight() > 32) {
+            Image img = icon.getImage().getScaledInstance(28, 28, Image.SCALE_SMOOTH);
+            icon = new ImageIcon(img);
+        }
+        JLabel iconLabel = new JLabel(icon);
+        iconLabel.setToolTipText(role.substring(0, 1).toUpperCase() + role.substring(1));
+        panel.add(iconLabel);
+        panel.add(nameLabel);
+        return panel;
     }
 }
