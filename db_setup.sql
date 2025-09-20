@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS cars (
     license_plate VARCHAR(20) UNIQUE NOT NULL,
     status VARCHAR(20) NOT NULL,
     specs TEXT,
-    price_per_day DECIMAL(10,2) NOT NULL
+    price_per_day DECIMAL(10,2) NOT NULL,
+    total_km_driven INT DEFAULT 0 NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS bookings (

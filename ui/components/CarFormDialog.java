@@ -21,6 +21,7 @@ public class CarFormDialog extends JDialog {
     private JComboBox<String> statusBox;
     private JTextArea specsField;
     private JTextField priceField;
+    private JTextField totalKmDrivenField;
     private boolean approved = false;
     private Car result = null;
 
@@ -59,6 +60,7 @@ public class CarFormDialog extends JDialog {
         specsField.setWrapStyleWord(true);
         JScrollPane specsScrollPane = new JScrollPane(specsField);
         priceField = new JTextField(20);
+        totalKmDrivenField = new JTextField(20);
 
         // Populate fields if editing
         if (existingCar != null) {
@@ -69,6 +71,9 @@ public class CarFormDialog extends JDialog {
             statusBox.setSelectedItem(existingCar.getStatus());
             specsField.setText(existingCar.getSpecs());
             priceField.setText(existingCar.getPricePerDay().toString());
+            totalKmDrivenField.setText(String.valueOf(existingCar.getTotalKmDriven()));
+        } else {
+            totalKmDrivenField.setText("0");
         }
 
         // Row 1
@@ -139,6 +144,16 @@ public class CarFormDialog extends JDialog {
         gbc.weightx = 0.2;
         gbc.weighty = 0.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
+        formPanel.add(new JLabel("Total KM Driven:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.8;
+        formPanel.add(totalKmDrivenField, gbc);
+
+        // Row 8
+        gbc.gridx = 0;
+        gbc.gridy = 7;
+        gbc.weightx = 0.2;
         formPanel.add(new JLabel("Price/Day:"), gbc);
 
         gbc.gridx = 1;
@@ -233,9 +248,22 @@ public class CarFormDialog extends JDialog {
                 return false;
             }
 
+            // Parse total KM driven with validation
+            int totalKmDriven;
+            try {
+                totalKmDriven = Integer.parseInt(totalKmDrivenField.getText().trim());
+                if (totalKmDriven < 0) {
+                    showError("Total KM Driven cannot be negative");
+                    return false;
+                }
+            } catch (NumberFormatException e) {
+                showError("Invalid Total KM Driven format. Please enter a valid number.");
+                return false;
+            }
+
             // Create result car
             int id = (existingCar != null) ? existingCar.getId() : 0;
-            result = new Car(id, make, modelName, year, license, status, specs, price);
+            result = new Car(id, make, modelName, year, license, status, specs, price, totalKmDriven);
 
             return true;
         } catch (Exception ex) {

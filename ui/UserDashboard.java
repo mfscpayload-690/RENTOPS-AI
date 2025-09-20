@@ -271,7 +271,7 @@ public class UserDashboard extends JPanel {
         panel.add(searchPanel, BorderLayout.NORTH);
 
         // Cars table
-        String[] columnNames = {"Make", "Model", "Year", "Price/Day", "Status", "Specs"};
+        String[] columnNames = {"Make", "Model", "Year", "Total KM Driven", "Price/Day", "Status", "Specs"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         JTable table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -328,6 +328,7 @@ public class UserDashboard extends JPanel {
                             car.getMake(),
                             car.getModel(),
                             car.getYear(),
+                            car.getTotalKmDriven() + " KM",
                             "₹" + car.getPricePerDay() + "/day",
                             car.getStatus(),
                             car.getSpecs()

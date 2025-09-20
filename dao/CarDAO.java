@@ -11,21 +11,61 @@ public class CarDAO {
     public List<Car> getAllCars() {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT * FROM cars ORDER BY make, model";
+        System.out.println("CarDAO: Executing getAllCars query");
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
             // Force metadata initialization to avoid NPE in some driver versions
             rs.getMetaData();
-            while (rs.next()) {
-                cars.add(new Car(
-                        rs.getInt("id"),
-                        rs.getString("make"),
-                        rs.getString("model"),
-                        rs.getInt("year"),
-                        rs.getString("license_plate"),
-                        rs.getString("status"),
-                        rs.getString("specs"),
-                        rs.getBigDecimal("price_per_day")
-                ));
+
+            // Check if total_km_driven column exists
+            boolean hasKmDrivenColumn = false;
+            try {
+                ResultSetMetaData metaData = rs.getMetaData();
+                for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                    if ("total_km_driven".equalsIgnoreCase(metaData.getColumnName(i))) {
+                        hasKmDrivenColumn = true;
+                        break;
+                    }
+                }
+                System.out.println("CarDAO: total_km_driven column exists: " + hasKmDrivenColumn);
+            } catch (Exception e) {
+                System.err.println("CarDAO: Error checking columns: " + e.getMessage());
             }
+
+            int count = 0;
+            while (rs.next()) {
+                count++;
+                try {
+                    // Use the constructor with or without total_km_driven based on column existence
+                    if (hasKmDrivenColumn) {
+                        cars.add(new Car(
+                                rs.getInt("id"),
+                                rs.getString("make"),
+                                rs.getString("model"),
+                                rs.getInt("year"),
+                                rs.getString("license_plate"),
+                                rs.getString("status"),
+                                rs.getString("specs"),
+                                rs.getBigDecimal("price_per_day"),
+                                rs.getInt("total_km_driven")
+                        ));
+                    } else {
+                        cars.add(new Car(
+                                rs.getInt("id"),
+                                rs.getString("make"),
+                                rs.getString("model"),
+                                rs.getInt("year"),
+                                rs.getString("license_plate"),
+                                rs.getString("status"),
+                                rs.getString("specs"),
+                                rs.getBigDecimal("price_per_day")
+                        ));
+                    }
+                } catch (SQLException ex) {
+                    System.err.println("CarDAO: Error getting car data: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            }
+            System.out.println("CarDAO: Found " + count + " cars, added " + cars.size() + " to list");
         } catch (SQLException e) {
             System.err.println("Database error getting cars: " + e.getMessage());
             e.printStackTrace();
@@ -39,17 +79,48 @@ public class CarDAO {
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
             // Force metadata initialization to avoid NPE in some driver versions
             rs.getMetaData();
+
+            // Check if total_km_driven column exists
+            boolean hasKmDrivenColumn = false;
+            try {
+                ResultSetMetaData metaData = rs.getMetaData();
+                for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                    if ("total_km_driven".equalsIgnoreCase(metaData.getColumnName(i))) {
+                        hasKmDrivenColumn = true;
+                        break;
+                    }
+                }
+                System.out.println("CarDAO: total_km_driven column exists in getAvailableCars: " + hasKmDrivenColumn);
+            } catch (Exception e) {
+                System.err.println("CarDAO: Error checking columns: " + e.getMessage());
+            }
+
             while (rs.next()) {
-                cars.add(new Car(
-                        rs.getInt("id"),
-                        rs.getString("make"),
-                        rs.getString("model"),
-                        rs.getInt("year"),
-                        rs.getString("license_plate"),
-                        rs.getString("status"),
-                        rs.getString("specs"),
-                        rs.getBigDecimal("price_per_day")
-                ));
+                // Use the constructor with or without total_km_driven based on column existence
+                if (hasKmDrivenColumn) {
+                    cars.add(new Car(
+                            rs.getInt("id"),
+                            rs.getString("make"),
+                            rs.getString("model"),
+                            rs.getInt("year"),
+                            rs.getString("license_plate"),
+                            rs.getString("status"),
+                            rs.getString("specs"),
+                            rs.getBigDecimal("price_per_day"),
+                            rs.getInt("total_km_driven")
+                    ));
+                } else {
+                    cars.add(new Car(
+                            rs.getInt("id"),
+                            rs.getString("make"),
+                            rs.getString("model"),
+                            rs.getInt("year"),
+                            rs.getString("license_plate"),
+                            rs.getString("status"),
+                            rs.getString("specs"),
+                            rs.getBigDecimal("price_per_day")
+                    ));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Database error getting available cars: " + e.getMessage());
@@ -64,16 +135,44 @@ public class CarDAO {
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return new Car(
-                            rs.getInt("id"),
-                            rs.getString("make"),
-                            rs.getString("model"),
-                            rs.getInt("year"),
-                            rs.getString("license_plate"),
-                            rs.getString("status"),
-                            rs.getString("specs"),
-                            rs.getBigDecimal("price_per_day")
-                    );
+                    // Check if total_km_driven column exists
+                    boolean hasKmDrivenColumn = false;
+                    try {
+                        ResultSetMetaData metaData = rs.getMetaData();
+                        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                            if ("total_km_driven".equalsIgnoreCase(metaData.getColumnName(i))) {
+                                hasKmDrivenColumn = true;
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("CarDAO: Error checking columns in getById: " + e.getMessage());
+                    }
+
+                    if (hasKmDrivenColumn) {
+                        return new Car(
+                                rs.getInt("id"),
+                                rs.getString("make"),
+                                rs.getString("model"),
+                                rs.getInt("year"),
+                                rs.getString("license_plate"),
+                                rs.getString("status"),
+                                rs.getString("specs"),
+                                rs.getBigDecimal("price_per_day"),
+                                rs.getInt("total_km_driven")
+                        );
+                    } else {
+                        return new Car(
+                                rs.getInt("id"),
+                                rs.getString("make"),
+                                rs.getString("model"),
+                                rs.getInt("year"),
+                                rs.getString("license_plate"),
+                                rs.getString("status"),
+                                rs.getString("specs"),
+                                rs.getBigDecimal("price_per_day")
+                        );
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -84,7 +183,7 @@ public class CarDAO {
     }
 
     public boolean addCar(Car car) {
-        String sql = "INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, car.getMake());
             stmt.setString(2, car.getModel());
@@ -93,6 +192,7 @@ public class CarDAO {
             stmt.setString(5, car.getStatus());
             stmt.setString(6, car.getSpecs());
             stmt.setBigDecimal(7, car.getPricePerDay());
+            stmt.setInt(8, car.getTotalKmDriven());
             return stmt.executeUpdate() == 1;
         } catch (SQLException e) {
             System.err.println("Database error adding car: " + e.getMessage());
@@ -102,7 +202,7 @@ public class CarDAO {
     }
 
     public boolean updateCar(Car car) {
-        String sql = "UPDATE cars SET make = ?, model = ?, year = ?, license_plate = ?, status = ?, specs = ?, price_per_day = ? WHERE id = ?";
+        String sql = "UPDATE cars SET make = ?, model = ?, year = ?, license_plate = ?, status = ?, specs = ?, price_per_day = ?, total_km_driven = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, car.getMake());
             stmt.setString(2, car.getModel());
@@ -111,7 +211,8 @@ public class CarDAO {
             stmt.setString(5, car.getStatus());
             stmt.setString(6, car.getSpecs());
             stmt.setBigDecimal(7, car.getPricePerDay());
-            stmt.setInt(8, car.getId());
+            stmt.setInt(8, car.getTotalKmDriven());
+            stmt.setInt(9, car.getId());
             return stmt.executeUpdate() == 1;
         } catch (SQLException e) {
             System.err.println("Database error updating car: " + e.getMessage());

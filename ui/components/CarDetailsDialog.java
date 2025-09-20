@@ -1,13 +1,12 @@
 package ui.components;
 
-import models.Car;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.DecimalFormat;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import models.Car;
 
 /**
  * A dialog to display detailed information about a car.
@@ -83,9 +82,16 @@ public class CarDetailsDialog extends JDialog {
         gbc.gridx = 1;
         infoPanel.add(new JLabel(priceText), gbc);
 
-        // Add specs section with textarea for better display
         gbc.gridx = 0;
         gbc.gridy = 2;
+        infoPanel.add(createBoldLabel("Total KM Driven:"), gbc);
+
+        gbc.gridx = 1;
+        infoPanel.add(new JLabel(car.getTotalKmDriven() + " KM"), gbc);
+
+        // Add specs section with textarea for better display
+        gbc.gridx = 0;
+        gbc.gridy = 3;
         gbc.anchor = GridBagConstraints.NORTHWEST;
         infoPanel.add(createBoldLabel("Specifications:"), gbc);
 

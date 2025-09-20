@@ -3,6 +3,7 @@ package models;
 import java.math.BigDecimal;
 
 public class Car {
+
     private int id;
     private String make;
     private String model;
@@ -11,8 +12,13 @@ public class Car {
     private String status;
     private String specs;
     private BigDecimal pricePerDay;
+    private int totalKmDriven;
 
     public Car(int id, String make, String model, int year, String licensePlate, String status, String specs, BigDecimal pricePerDay) {
+        this(id, make, model, year, licensePlate, status, specs, pricePerDay, 0);
+    }
+
+    public Car(int id, String make, String model, int year, String licensePlate, String status, String specs, BigDecimal pricePerDay, int totalKmDriven) {
         this.id = id;
         this.make = make;
         this.model = model;
@@ -21,23 +27,79 @@ public class Car {
         this.status = status;
         this.specs = specs;
         this.pricePerDay = pricePerDay;
+        this.totalKmDriven = totalKmDriven;
     }
 
     // Getters and setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
-    public String getMake() { return make; }
-    public void setMake(String make) { this.make = make; }
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
-    public int getYear() { return year; }
-    public void setYear(int year) { this.year = year; }
-    public String getLicensePlate() { return licensePlate; }
-    public void setLicensePlate(String licensePlate) { this.licensePlate = licensePlate; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public String getSpecs() { return specs; }
-    public void setSpecs(String specs) { this.specs = specs; }
-    public BigDecimal getPricePerDay() { return pricePerDay; }
-    public void setPricePerDay(BigDecimal pricePerDay) { this.pricePerDay = pricePerDay; }
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getMake() {
+        return make;
+    }
+
+    public void setMake(String make) {
+        this.make = make;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
+
+    public String getLicensePlate() {
+        return licensePlate;
+    }
+
+    public void setLicensePlate(String licensePlate) {
+        this.licensePlate = licensePlate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getSpecs() {
+        return specs;
+    }
+
+    public void setSpecs(String specs) {
+        this.specs = specs;
+    }
+
+    public BigDecimal getPricePerDay() {
+        return pricePerDay;
+    }
+
+    public void setPricePerDay(BigDecimal pricePerDay) {
+        this.pricePerDay = pricePerDay;
+    }
+
+    public int getTotalKmDriven() {
+        return totalKmDriven;
+    }
+
+    public void setTotalKmDriven(int totalKmDriven) {
+        this.totalKmDriven = totalKmDriven;
+    }
 }

@@ -475,7 +475,7 @@ public class AdminDashboard extends JPanel {
         panel.add(header, BorderLayout.NORTH);
 
         // Cars table
-        String[] columnNames = {"ID", "Make", "Model", "Year", "License Plate", "Status", "Price/Day"};
+        String[] columnNames = {"ID", "Make", "Model", "Year", "License Plate", "Status", "Total KM Driven", "Price/Day"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         JTable table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -666,6 +666,7 @@ public class AdminDashboard extends JPanel {
                             car.getYear(),
                             car.getLicensePlate(),
                             car.getStatus(),
+                            car.getTotalKmDriven() + " KM",
                             "₹" + formatMoney(car.getPricePerDay())
                         });
                     }
