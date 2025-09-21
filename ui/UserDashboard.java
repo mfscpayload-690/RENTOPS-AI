@@ -18,6 +18,7 @@ public class UserDashboard extends JPanel {
 
     private CarDAO carDAO;
     private BookingDAO bookingDAO;
+    private services.BookingService bookingService;
     private AuthService authService;
     private CardLayout cardLayout;
     private JPanel contentPanel;
@@ -42,6 +43,7 @@ public class UserDashboard extends JPanel {
         this.carDAO = new CarDAO();
         this.bookingDAO = new BookingDAO();
         this.authService = authService;
+        this.bookingService = new services.BookingService();
         this.parentCardLayout = parentCardLayout;
         this.parentCardPanel = parentCardPanel;
 
@@ -271,7 +273,7 @@ public class UserDashboard extends JPanel {
         panel.add(searchPanel, BorderLayout.NORTH);
 
         // Cars table
-        String[] columnNames = {"Make", "Model", "Year", "Total KM Driven", "Price/Day", "Status", "Specs"};
+        String[] columnNames = {"ID", "Code", "Make", "Model", "Year", "Total KM Driven", "Price/Day", "Status", "Specs"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         JTable table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -279,6 +281,7 @@ public class UserDashboard extends JPanel {
         table.getTableHeader().setBackground(new Color(41, 128, 185));
         table.getTableHeader().setForeground(Color.WHITE);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.removeColumn(table.getColumnModel().getColumn(0)); // hide ID
 
         JScrollPane scrollPane = new JScrollPane(table);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -296,7 +299,53 @@ public class UserDashboard extends JPanel {
         rentButton.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow >= 0) {
-                JOptionPane.showMessageDialog(this, "Booking functionality will be implemented soon!");
+                int modelRow = table.convertRowIndexToModel(selectedRow);
+                int carId = (int) model.getValueAt(modelRow, 0);
+
+                JPanel input = new JPanel(new GridLayout(0, 2, 8, 8));
+                JSpinner startPicker = new JSpinner(new SpinnerDateModel());
+                JSpinner endPicker = new JSpinner(new SpinnerDateModel());
+                startPicker.setEditor(new JSpinner.DateEditor(startPicker, "yyyy-MM-dd"));
+                endPicker.setEditor(new JSpinner.DateEditor(endPicker, "yyyy-MM-dd"));
+                input.add(new JLabel("Start Date:"));
+                input.add(startPicker);
+                input.add(new JLabel("End Date:"));
+                input.add(endPicker);
+                int res = JOptionPane.showConfirmDialog(this, input, "Create Booking", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                if (res == JOptionPane.OK_OPTION) {
+                    java.util.Date sd = (java.util.Date) startPicker.getValue();
+                    java.util.Date ed = (java.util.Date) endPicker.getValue();
+                    java.time.LocalDate start = sd.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                    java.time.LocalDate end = ed.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                    // Validations: no past dates, end after start, max window 30 days
+                    java.time.LocalDate today = java.time.LocalDate.now();
+                    if (start.isBefore(today)) {
+                        Toast.error(this, "Start date cannot be in the past.");
+                        return;
+                    }
+                    if (!end.isAfter(start)) {
+                        Toast.error(this, "End date must be after start date.");
+                        return;
+                    }
+                    long days = java.time.temporal.ChronoUnit.DAYS.between(start, end);
+                    if (days > 30) {
+                        Toast.error(this, "Maximum rental period is 30 days.");
+                        return;
+                    }
+                    if (authService == null || authService.getCurrentUser() == null) {
+                        JOptionPane.showMessageDialog(this, "You must be logged in to book.");
+                        return;
+                    }
+                    int userId = authService.getCurrentUser().getId();
+                    boolean ok = bookingService.createBooking(userId, carId, start, end);
+                    if (ok) {
+                        Toast.success(this, "Booking created. Pending approval.");
+                        // reload tables
+                        loadAvailableCars(model);
+                    } else {
+                        Toast.error(this, "Failed to create booking (car unavailable or invalid dates).");
+                    }
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Please select a car to rent.");
             }
@@ -324,7 +373,10 @@ public class UserDashboard extends JPanel {
                     List<Car> cars = get();
                     model.setRowCount(0);
                     for (Car car : cars) {
+                        String carCode = utils.DisplayCodeUtil.codeFromName(car.getModel());
                         model.addRow(new Object[]{
+                            car.getId(),
+                            carCode,
                             car.getMake(),
                             car.getModel(),
                             car.getYear(),
@@ -355,8 +407,8 @@ public class UserDashboard extends JPanel {
 
         // Bookings table
         String[] columnNames = {"Booking ID", "Car", "Start Date", "End Date", "Status", "Total Price"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
+        DefaultTableModel bookingsModel = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(bookingsModel);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         table.setRowHeight(25);
         table.getTableHeader().setBackground(new Color(41, 128, 185));
@@ -366,7 +418,49 @@ public class UserDashboard extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        // Load bookings for current user from database
+        // Bottom actions
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        actions.setBackground(new Color(245, 247, 250));
+        JButton cancelBtn = new JButton("Cancel Booking");
+        JButton refreshBtn = new JButton("Refresh");
+        cancelBtn.setBackground(new Color(231, 76, 60));
+        cancelBtn.setForeground(Color.WHITE);
+        cancelBtn.setFocusPainted(false);
+        refreshBtn.setBackground(new Color(149, 165, 166));
+        refreshBtn.setForeground(Color.WHITE);
+        refreshBtn.setFocusPainted(false);
+        actions.add(cancelBtn);
+        actions.add(refreshBtn);
+        panel.add(actions, BorderLayout.SOUTH);
+
+        cancelBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = table.convertRowIndexToModel(row);
+                int bookingId = (int) bookingsModel.getValueAt(modelRow, 0);
+                int confirm = JOptionPane.showConfirmDialog(panel, "Cancel booking #" + bookingId + "?", "Confirm", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (bookingService.cancelBooking(bookingId)) {
+                        Toast.success(panel, "Booking cancelled.");
+                        loadUserBookings(bookingsModel);
+                    } else {
+                        Toast.error(panel, "Failed to cancel booking.");
+                    }
+                }
+            } else {
+                Toast.info(panel, "Select a booking to cancel.");
+            }
+        });
+
+        refreshBtn.addActionListener(e -> loadUserBookings(bookingsModel));
+
+        // Initial load
+        loadUserBookings(bookingsModel);
+
+        return panel;
+    }
+
+    private void loadUserBookings(DefaultTableModel model) {
         SwingWorker<List<models.Booking>, Void> worker = new SwingWorker<List<models.Booking>, Void>() {
             @Override
             protected List<models.Booking> doInBackground() throws Exception {
@@ -383,7 +477,6 @@ public class UserDashboard extends JPanel {
                     List<models.Booking> bookings = get();
                     model.setRowCount(0);
                     for (models.Booking booking : bookings) {
-                        // Fetch car info for display
                         models.Car car = carDAO.getById(booking.getCarId());
                         String carName = car != null ? car.getMake() + " " + car.getModel() + " " + car.getYear() : "Car ID " + booking.getCarId();
                         model.addRow(new Object[]{
@@ -402,8 +495,6 @@ public class UserDashboard extends JPanel {
             }
         };
         worker.execute();
-
-        return panel;
     }
 
     private JPanel createProfilePanel() {

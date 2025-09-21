@@ -24,6 +24,7 @@ public class AdminDashboard extends JPanel {
 
     private CarDAO carDAO;
     private BookingDAO bookingDAO;
+    private services.BookingService bookingService;
     private UserDAO userDAO;
     private CardLayout cardLayout;
     private JPanel contentPanel;
@@ -38,6 +39,7 @@ public class AdminDashboard extends JPanel {
     public AdminDashboard(services.AuthService authService, CardLayout parentCardLayout, JPanel parentCardPanel) {
         this.carDAO = new CarDAO();
         this.bookingDAO = new BookingDAO();
+        this.bookingService = new services.BookingService();
         this.userDAO = new UserDAO();
         this.authService = authService;
         this.parentCardLayout = parentCardLayout;
@@ -277,7 +279,7 @@ public class AdminDashboard extends JPanel {
         panel.add(header, BorderLayout.NORTH);
 
         // Users table
-        String[] columnNames = {"ID", "Username", "Role", "Organization", "Created At"};
+        String[] columnNames = {"ID", "User Code", "Username", "Role", "Organization", "Created At"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         JTable table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -368,8 +370,10 @@ public class AdminDashboard extends JPanel {
                     List<User> users = get();
                     model.setRowCount(0);
                     for (User user : users) {
+                        String userCode = utils.DisplayCodeUtil.codeFromName(user.getUsername());
                         model.addRow(new Object[]{
                             user.getId(),
+                            userCode,
                             user.getUsername(),
                             user.getRole(),
                             user.getOrganization() != null ? user.getOrganization() : "-",
@@ -475,7 +479,7 @@ public class AdminDashboard extends JPanel {
         panel.add(header, BorderLayout.NORTH);
 
         // Cars table
-        String[] columnNames = {"ID", "Make", "Model", "Year", "License Plate", "Status", "Total KM Driven", "Price/Day"};
+        String[] columnNames = {"ID", "Car Code", "Make", "Model", "Year", "License Plate", "Status", "Total KM Driven", "Price/Day"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         JTable table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -659,8 +663,10 @@ public class AdminDashboard extends JPanel {
                     List<Car> cars = get();
                     model.setRowCount(0); // Clear existing data
                     for (Car car : cars) {
+                        String carCode = utils.DisplayCodeUtil.codeFromName(car.getModel());
                         model.addRow(new Object[]{
                             car.getId(),
+                            carCode,
                             car.getMake(),
                             car.getModel(),
                             car.getYear(),
@@ -700,7 +706,7 @@ public class AdminDashboard extends JPanel {
         panel.add(header, BorderLayout.NORTH);
 
         // Bookings table
-        String[] columnNames = {"ID", "User ID", "Car ID", "Start Date", "End Date", "Status", "Total Price"};
+        String[] columnNames = {"ID", "User", "Car", "Start Date", "End Date", "Status", "Total Price"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         JTable table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -714,6 +720,97 @@ public class AdminDashboard extends JPanel {
 
         // Wire refresh now that model exists
         refreshBtn.addActionListener(e -> loadBookingsData(model));
+
+        // Action buttons
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        actions.setBackground(new Color(245, 247, 250));
+        JButton approveBtn = new JButton("Approve");
+        JButton startBtn = new JButton("Start");
+        JButton completeBtn = new JButton("Complete");
+        JButton cancelBtn = new JButton("Cancel");
+
+        for (JButton b : new JButton[]{approveBtn, startBtn, completeBtn, cancelBtn}) {
+            b.setFocusPainted(false);
+            b.setForeground(Color.WHITE);
+        }
+        approveBtn.setBackground(new Color(52, 152, 219));
+        startBtn.setBackground(new Color(230, 126, 34));
+        completeBtn.setBackground(new Color(46, 204, 113));
+        cancelBtn.setBackground(new Color(231, 76, 60));
+
+        actions.add(approveBtn);
+        actions.add(startBtn);
+        actions.add(completeBtn);
+        actions.add(cancelBtn);
+        panel.add(actions, BorderLayout.SOUTH);
+
+        approveBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = table.convertRowIndexToModel(row);
+                int id = (int) model.getValueAt(modelRow, 0);
+                if (bookingService.approveBooking(id)) {
+                    Toast.success(panel, "Booking approved.");
+                    loadBookingsData(model);
+                } else {
+                    Toast.error(panel, "Failed to approve booking.");
+                }
+            } else {
+                Toast.info(panel, "Select a booking first.");
+            }
+        });
+
+        startBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = table.convertRowIndexToModel(row);
+                int id = (int) model.getValueAt(modelRow, 0);
+                if (bookingService.startBooking(id)) {
+                    Toast.success(panel, "Booking started.");
+                    loadBookingsData(model);
+                } else {
+                    Toast.error(panel, "Failed to start booking.");
+                }
+            } else {
+                Toast.info(panel, "Select a booking first.");
+            }
+        });
+
+        completeBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = table.convertRowIndexToModel(row);
+                int id = (int) model.getValueAt(modelRow, 0);
+                if (bookingService.completeBooking(id)) {
+                    Toast.success(panel, "Booking completed.");
+                    loadBookingsData(model);
+                } else {
+                    Toast.error(panel, "Failed to complete booking.");
+                }
+            } else {
+                Toast.info(panel, "Select a booking first.");
+            }
+        });
+
+        cancelBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = table.convertRowIndexToModel(row);
+                int id = (int) model.getValueAt(modelRow, 0);
+                int confirm = JOptionPane.showConfirmDialog(panel, "Cancel booking #" + id + "?", "Confirm", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (bookingService.cancelBooking(id)) {
+                        Toast.success(panel, "Booking cancelled.");
+                        loadBookingsData(model);
+                    } else {
+                        Toast.error(panel, "Failed to cancel booking.");
+                    }
+                }
+            } else {
+                Toast.info(panel, "Select a booking first.");
+            }
+        });
+
         // Load bookings data
         loadBookingsData(model);
 
@@ -749,10 +846,17 @@ public class AdminDashboard extends JPanel {
                     List<Booking> bookings = get();
                     model.setRowCount(0);
                     for (Booking booking : bookings) {
+                        // Enrich with readable user and car names
+                        models.User u = userDAO.getById(booking.getUserId());
+                        models.Car c = carDAO.getById(booking.getCarId());
+                        String userName = u != null ? u.getUsername() : ("User #" + booking.getUserId());
+                        String carName = c != null ? (c.getMake() + " " + c.getModel()) : ("Car #" + booking.getCarId());
+                        String userCode = utils.DisplayCodeUtil.codeFromName(userName);
+                        String carCode = utils.DisplayCodeUtil.codeFromName(c != null ? c.getModel() : carName);
                         model.addRow(new Object[]{
                             booking.getId(),
-                            booking.getUserId(),
-                            booking.getCarId(),
+                            userName + " (" + userCode + ")",
+                            carName + " (" + carCode + ")",
                             booking.getStartDate(),
                             booking.getEndDate(),
                             booking.getStatus(),

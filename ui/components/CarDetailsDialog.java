@@ -7,6 +7,7 @@ import java.text.DecimalFormat;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import models.Car;
+import utils.ImageUtils;
 
 /**
  * A dialog to display detailed information about a car.
@@ -110,8 +111,23 @@ public class CarDetailsDialog extends JDialog {
         gbc.weighty = 1.0;
         infoPanel.add(specsScroll, gbc);
 
-        // Add button panel at the bottom
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // Bottom panel with galleries and close
+        JPanel buttonPanel = new JPanel(new BorderLayout());
+        JPanel galleries = new JPanel(new GridLayout(1, 2, 10, 10));
+        // Load interior/exterior galleries if available
+        java.util.List<ImageIcon> interior = ImageUtils.loadCarCategoryImages(car, "interior", 380, 240);
+        java.util.List<ImageIcon> exterior = ImageUtils.loadCarCategoryImages(car, "exterior", 380, 240);
+
+        JPanel interiorPanel = new JPanel(new BorderLayout());
+        interiorPanel.add(new JLabel("Interior", SwingConstants.CENTER), BorderLayout.NORTH);
+        interiorPanel.add(new ImageCarouselPanel(interior), BorderLayout.CENTER);
+        JPanel exteriorPanel = new JPanel(new BorderLayout());
+        exteriorPanel.add(new JLabel("Exterior", SwingConstants.CENTER), BorderLayout.NORTH);
+        exteriorPanel.add(new ImageCarouselPanel(exterior), BorderLayout.CENTER);
+        galleries.add(interiorPanel);
+        galleries.add(exteriorPanel);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton closeButton = new JButton("Close");
         closeButton.addActionListener(new ActionListener() {
             @Override
@@ -119,10 +135,13 @@ public class CarDetailsDialog extends JDialog {
                 dispose();
             }
         });
-        buttonPanel.add(closeButton);
+        actions.add(closeButton);
+        buttonPanel.add(galleries, BorderLayout.CENTER);
+        buttonPanel.add(actions, BorderLayout.SOUTH);
 
         // Add panels to content panel
         contentPanel.add(headerPanel, BorderLayout.NORTH);
+        // split center: info on left, galleries bottom via BorderLayout
         contentPanel.add(infoPanel, BorderLayout.CENTER);
         contentPanel.add(buttonPanel, BorderLayout.SOUTH);
 
