@@ -51,31 +51,39 @@ public class ImageUtils {
             imageUrl = car.getExteriorImageUrl();
         }
 
-        // First try to load from URL if car has imageUrl
+        // First try to load directly from URL if provided, regardless of extension
         if (imageUrl != null && !imageUrl.isEmpty()) {
-            String urlPath = imageUrl;
-            if (category != null && !category.isEmpty() && !category.equalsIgnoreCase("interior") && !category.equalsIgnoreCase("exterior")) {
-                // If category specified (other than interior/exterior), look for category-specific URLs
-                if (!urlPath.endsWith("/")) {
-                    urlPath += "/";
-                }
-                urlPath += category;
+            // 1) Try direct load
+            ImageIcon direct = loadFromUrl(imageUrl, maxW, maxH);
+            if (direct != null) {
+                List<ImageIcon> icons = new ArrayList<>();
+                icons.add(direct);
+                return icons;
             }
 
-            // If URL ends with /, assume it's a folder URL and try to load images
-            // Functionality could be expanded to fetch folder listings, but that's more complex
-            // For now, we'll try common image names
-            if (urlPath.endsWith("/")) {
-                List<ImageIcon> icons = loadCommonImagesFromUrl(urlPath, maxW, maxH);
-                if (!icons.isEmpty()) {
-                    return icons;
+            // 2) Try folder patterns with common image names
+            List<String> folderCandidates = new ArrayList<>();
+            boolean endsWithSlash = imageUrl.endsWith("/");
+            boolean looksLikeFile = imageUrl.matches(".*\\.[a-zA-Z0-9]{2,4}($|[?#])");
+
+            if (endsWithSlash) {
+                // base folder
+                folderCandidates.add(imageUrl);
+                // try category subfolder if interior/exterior
+                if (category != null && (category.equalsIgnoreCase("interior") || category.equalsIgnoreCase("exterior"))) {
+                    folderCandidates.add(imageUrl + category.toLowerCase() + "/");
                 }
-            } // Check if URL directly points to an image
-            else if (isImageUrl(urlPath)) {
-                ImageIcon icon = loadFromUrl(urlPath, maxW, maxH);
-                if (icon != null) {
-                    List<ImageIcon> icons = new ArrayList<>();
-                    icons.add(icon);
+            } else if (!looksLikeFile) {
+                // treat as folder without trailing slash
+                folderCandidates.add(imageUrl + "/");
+                if (category != null && (category.equalsIgnoreCase("interior") || category.equalsIgnoreCase("exterior"))) {
+                    folderCandidates.add(imageUrl + "/" + category.toLowerCase() + "/");
+                }
+            }
+
+            for (String base : folderCandidates) {
+                List<ImageIcon> icons = loadCommonImagesFromUrl(base, maxW, maxH);
+                if (!icons.isEmpty()) {
                     return icons;
                 }
             }
@@ -92,13 +100,7 @@ public class ImageUtils {
         return new ArrayList<>();
     }
 
-    /**
-     * Check if URL points to an image based on extension
-     */
-    private static boolean isImageUrl(String url) {
-        return hasSupportedExt(url);
-    }
-
+    // Removed unused isImageUrl(String) helper
     /**
      * Try to load common image names from a URL folder
      */
@@ -194,7 +196,8 @@ public class ImageUtils {
 
         return getCachedImage(cacheKey, () -> {
             try {
-                URL url = new URL(urlString);
+                java.net.URI uri = java.net.URI.create(urlString);
+                URL url = uri.toURL();
                 URLConnection conn = url.openConnection();
                 // Set user-agent to avoid some server restrictions
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0");
