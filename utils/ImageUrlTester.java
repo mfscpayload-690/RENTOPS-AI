@@ -35,7 +35,7 @@ public class ImageUrlTester {
                     String url = sampleUrls[count];
                     System.out.println("Setting URL for " + car.getMake() + " " + car.getModel() + ": " + url);
 
-                    // Create a new car object with the URL
+                    // Create a new car object with the URL for both exterior and interior
                     Car updatedCar = new Car(
                             car.getId(),
                             car.getMake(),
@@ -46,7 +46,8 @@ public class ImageUrlTester {
                             car.getSpecs(),
                             car.getPricePerDay(),
                             car.getTotalKmDriven(),
-                            url
+                            url,
+                            url // Use the same URL for both exterior and interior for testing
                     );
 
                     // Update in database
@@ -63,7 +64,8 @@ public class ImageUrlTester {
             allCars = carDAO.getAllCars();
             for (Car car : allCars) {
                 System.out.println(car.getMake() + " " + car.getModel() + ": "
-                        + (car.getImageUrl() != null ? car.getImageUrl() : "No URL"));
+                        + "\n   Exterior: " + (car.getExteriorImageUrl() != null ? car.getExteriorImageUrl() : "No URL")
+                        + "\n   Interior: " + (car.getInteriorImageUrl() != null ? car.getInteriorImageUrl() : "No URL"));
             }
 
         } catch (Exception e) {

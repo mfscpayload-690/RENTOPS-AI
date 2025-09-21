@@ -41,11 +41,21 @@ public class ImageUtils {
     }
 
     public static List<ImageIcon> loadCarCategoryImages(Car car, String category, int maxW, int maxH) {
+        // Determine which URL to use based on the category
+        String imageUrl = null;
+
+        if (category != null && category.equalsIgnoreCase("interior")) {
+            imageUrl = car.getInteriorImageUrl();
+        } else {
+            // For exterior or any other category, use exterior URL
+            imageUrl = car.getExteriorImageUrl();
+        }
+
         // First try to load from URL if car has imageUrl
-        if (car.getImageUrl() != null && !car.getImageUrl().isEmpty()) {
-            String urlPath = car.getImageUrl();
-            if (category != null && !category.isEmpty()) {
-                // If category specified, look for category-specific URLs
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            String urlPath = imageUrl;
+            if (category != null && !category.isEmpty() && !category.equalsIgnoreCase("interior") && !category.equalsIgnoreCase("exterior")) {
+                // If category specified (other than interior/exterior), look for category-specific URLs
                 if (!urlPath.endsWith("/")) {
                     urlPath += "/";
                 }

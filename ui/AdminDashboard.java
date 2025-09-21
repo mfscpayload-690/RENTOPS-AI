@@ -629,7 +629,14 @@ public class AdminDashboard extends JPanel {
                 Toast.success(this, "Car added successfully.");
                 loadCarsData(model);
             } else {
-                Toast.error(this, "Failed to add car.");
+                String msg = "Failed to add car.";
+                if (carDAO instanceof dao.CarDAO) {
+                    String last = ((dao.CarDAO) carDAO).getLastErrorMessage();
+                    if (last != null && !last.isEmpty()) {
+                        msg += "\n" + last;
+                    }
+                }
+                Toast.error(this, msg);
             }
         }
     }
@@ -645,7 +652,14 @@ public class AdminDashboard extends JPanel {
                 Toast.success(this, "Car updated successfully.");
                 loadCarsData(model);
             } else {
-                Toast.error(this, "Failed to update car.");
+                String msg = "Failed to update car.";
+                if (carDAO instanceof dao.CarDAO) {
+                    String last = ((dao.CarDAO) carDAO).getLastErrorMessage();
+                    if (last != null && !last.isEmpty()) {
+                        msg += "\n" + last;
+                    }
+                }
+                Toast.error(this, msg);
             }
         }
     }

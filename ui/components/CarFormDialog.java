@@ -295,6 +295,17 @@ public class CarFormDialog extends JDialog {
             String exteriorImageUrl = exteriorImageUrlField.getText().trim();
             String interiorImageUrl = interiorImageUrlField.getText().trim();
 
+            // Basic URL validation (allow empty)
+            java.util.function.Predicate<String> isValidUrl = (u) -> u == null || u.isEmpty() || u.startsWith("http://") || u.startsWith("https://");
+            if (!isValidUrl.test(exteriorImageUrl)) {
+                showError("Exterior Image URL must start with http:// or https:// or be empty.");
+                return false;
+            }
+            if (!isValidUrl.test(interiorImageUrl)) {
+                showError("Interior Image URL must start with http:// or https:// or be empty.");
+                return false;
+            }
+
             // Create result car
             int id = (existingCar != null) ? existingCar.getId() : 0;
             result = new Car(id, make, modelName, year, license, status, specs, price, totalKmDriven, exteriorImageUrl, interiorImageUrl);

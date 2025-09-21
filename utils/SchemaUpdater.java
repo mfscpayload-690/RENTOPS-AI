@@ -26,6 +26,13 @@ public class SchemaUpdater {
             rs = meta.getColumns(null, null, "cars", "exterior_image_url");
             if (rs.next()) {
                 System.out.println("Exterior image URL column already exists in cars table");
+                // Try to widen column to 512 if smaller
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("ALTER TABLE cars MODIFY COLUMN exterior_image_url VARCHAR(512) DEFAULT NULL");
+                    System.out.println("Exterior image URL column widened to 512 characters");
+                } catch (SQLException ex) {
+                    System.out.println("Skipping exterior_image_url widen: " + ex.getMessage());
+                }
             } else {
                 // Check if old image_url column exists and migrate data if needed
                 boolean hasOldImageColumn = false;
@@ -35,7 +42,7 @@ public class SchemaUpdater {
                 }
 
                 // Add exterior_image_url column
-                String sql = "ALTER TABLE cars ADD COLUMN exterior_image_url VARCHAR(255) DEFAULT NULL";
+                String sql = "ALTER TABLE cars ADD COLUMN exterior_image_url VARCHAR(512) DEFAULT NULL";
                 try (Statement stmt = conn.createStatement()) {
                     stmt.executeUpdate(sql);
                     System.out.println("Exterior image URL column added successfully to cars table");
@@ -52,9 +59,16 @@ public class SchemaUpdater {
             rs = meta.getColumns(null, null, "cars", "interior_image_url");
             if (rs.next()) {
                 System.out.println("Interior image URL column already exists in cars table");
+                // Try to widen column to 512 if smaller
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("ALTER TABLE cars MODIFY COLUMN interior_image_url VARCHAR(512) DEFAULT NULL");
+                    System.out.println("Interior image URL column widened to 512 characters");
+                } catch (SQLException ex) {
+                    System.out.println("Skipping interior_image_url widen: " + ex.getMessage());
+                }
             } else {
                 // Add interior_image_url column
-                String sql = "ALTER TABLE cars ADD COLUMN interior_image_url VARCHAR(255) DEFAULT NULL";
+                String sql = "ALTER TABLE cars ADD COLUMN interior_image_url VARCHAR(512) DEFAULT NULL";
                 try (Statement stmt = conn.createStatement()) {
                     stmt.executeUpdate(sql);
                     System.out.println("Interior image URL column added successfully to cars table");

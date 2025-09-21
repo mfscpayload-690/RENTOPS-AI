@@ -8,6 +8,46 @@ import utils.DatabaseConnection;
 
 public class CarDAO {
 
+    private volatile String lastErrorMessage;
+
+    public String getLastErrorMessage() {
+        return lastErrorMessage;
+    }
+
+    private void clearLastError() {
+        lastErrorMessage = null;
+    }
+
+    private void recordError(SQLException e) {
+        lastErrorMessage = String.format("%s (SQLState=%s, Code=%d)", e.getMessage(), e.getSQLState(), e.getErrorCode());
+    }
+
+    private static String sanitizeUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        url = url.trim();
+        if (url.length() > 512) {
+            return url.substring(0, 512);
+        }
+        return url;
+    }
+
+    /**
+     * Check if a given column exists in the specified table.
+     */
+    private static boolean columnExists(Connection conn, String tableName, String columnName) {
+        try {
+            DatabaseMetaData meta = conn.getMetaData();
+            try (ResultSet rs = meta.getColumns(null, null, tableName, columnName)) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            System.err.println("CarDAO: Error checking if column exists (" + tableName + "." + columnName + "): " + e.getMessage());
+            return false;
+        }
+    }
+
     public List<Car> getAllCars() {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT * FROM cars ORDER BY make, model";
@@ -240,44 +280,114 @@ public class CarDAO {
     }
 
     public boolean addCar(Car car) {
-        String sql = "INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven, exterior_image_url, interior_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, car.getMake());
-            stmt.setString(2, car.getModel());
-            stmt.setInt(3, car.getYear());
-            stmt.setString(4, car.getLicensePlate());
-            stmt.setString(5, car.getStatus());
-            stmt.setString(6, car.getSpecs());
-            stmt.setBigDecimal(7, car.getPricePerDay());
-            stmt.setInt(8, car.getTotalKmDriven());
-            stmt.setString(9, car.getExteriorImageUrl());
-            stmt.setString(10, car.getInteriorImageUrl());
-            return stmt.executeUpdate() == 1;
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            clearLastError();
+            boolean hasKm = columnExists(conn, "cars", "total_km_driven");
+            boolean hasExterior = columnExists(conn, "cars", "exterior_image_url");
+            boolean hasInterior = columnExists(conn, "cars", "interior_image_url");
+            boolean hasLegacyImage = columnExists(conn, "cars", "image_url");
+
+            StringBuilder cols = new StringBuilder("make, model, year, license_plate, status, specs, price_per_day");
+            StringBuilder vals = new StringBuilder("?, ?, ?, ?, ?, ?, ?");
+
+            if (hasKm) {
+                cols.append(", total_km_driven");
+                vals.append(", ?");
+            }
+            if (hasExterior) {
+                cols.append(", exterior_image_url");
+                vals.append(", ?");
+            } else if (hasLegacyImage) {
+                cols.append(", image_url");
+                vals.append(", ?");
+            }
+            if (hasInterior) {
+                cols.append(", interior_image_url");
+                vals.append(", ?");
+            }
+
+            String sql = "INSERT INTO cars (" + cols + ") VALUES (" + vals + ")";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                int idx = 1;
+                stmt.setString(idx++, car.getMake());
+                stmt.setString(idx++, car.getModel());
+                stmt.setInt(idx++, car.getYear());
+                stmt.setString(idx++, car.getLicensePlate());
+                stmt.setString(idx++, car.getStatus());
+                stmt.setString(idx++, car.getSpecs());
+                stmt.setBigDecimal(idx++, car.getPricePerDay());
+
+                if (hasKm) {
+                    stmt.setInt(idx++, car.getTotalKmDriven());
+                }
+                if (hasExterior) {
+                    stmt.setString(idx++, sanitizeUrl(car.getExteriorImageUrl()));
+                } else if (hasLegacyImage) {
+                    // fall back to legacy single image_url column, use exterior URL
+                    stmt.setString(idx++, sanitizeUrl(car.getExteriorImageUrl()));
+                }
+                if (hasInterior) {
+                    stmt.setString(idx++, sanitizeUrl(car.getInteriorImageUrl()));
+                }
+                return stmt.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             System.err.println("Database error adding car: " + e.getMessage());
-            e.printStackTrace();
+            recordError(e);
             return false;
         }
     }
 
     public boolean updateCar(Car car) {
-        String sql = "UPDATE cars SET make = ?, model = ?, year = ?, license_plate = ?, status = ?, specs = ?, price_per_day = ?, total_km_driven = ?, exterior_image_url = ?, interior_image_url = ? WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, car.getMake());
-            stmt.setString(2, car.getModel());
-            stmt.setInt(3, car.getYear());
-            stmt.setString(4, car.getLicensePlate());
-            stmt.setString(5, car.getStatus());
-            stmt.setString(6, car.getSpecs());
-            stmt.setBigDecimal(7, car.getPricePerDay());
-            stmt.setInt(8, car.getTotalKmDriven());
-            stmt.setString(9, car.getExteriorImageUrl());
-            stmt.setString(10, car.getInteriorImageUrl());
-            stmt.setInt(11, car.getId());
-            return stmt.executeUpdate() == 1;
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            clearLastError();
+            boolean hasKm = columnExists(conn, "cars", "total_km_driven");
+            boolean hasExterior = columnExists(conn, "cars", "exterior_image_url");
+            boolean hasInterior = columnExists(conn, "cars", "interior_image_url");
+            boolean hasLegacyImage = columnExists(conn, "cars", "image_url");
+
+            StringBuilder sql = new StringBuilder("UPDATE cars SET make = ?, model = ?, year = ?, license_plate = ?, status = ?, specs = ?, price_per_day = ?");
+            if (hasKm) {
+                sql.append(", total_km_driven = ?");
+            }
+            if (hasExterior) {
+                sql.append(", exterior_image_url = ?");
+            } else if (hasLegacyImage) {
+                sql.append(", image_url = ?");
+            }
+            if (hasInterior) {
+                sql.append(", interior_image_url = ?");
+            }
+            sql.append(" WHERE id = ?");
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+                int idx = 1;
+                stmt.setString(idx++, car.getMake());
+                stmt.setString(idx++, car.getModel());
+                stmt.setInt(idx++, car.getYear());
+                stmt.setString(idx++, car.getLicensePlate());
+                stmt.setString(idx++, car.getStatus());
+                stmt.setString(idx++, car.getSpecs());
+                stmt.setBigDecimal(idx++, car.getPricePerDay());
+
+                if (hasKm) {
+                    stmt.setInt(idx++, car.getTotalKmDriven());
+                }
+                if (hasExterior) {
+                    stmt.setString(idx++, sanitizeUrl(car.getExteriorImageUrl()));
+                } else if (hasLegacyImage) {
+                    // fall back to legacy single image_url column, use exterior URL
+                    stmt.setString(idx++, sanitizeUrl(car.getExteriorImageUrl()));
+                }
+                if (hasInterior) {
+                    stmt.setString(idx++, sanitizeUrl(car.getInteriorImageUrl()));
+                }
+                stmt.setInt(idx++, car.getId());
+                return stmt.executeUpdate() == 1;
+            }
         } catch (SQLException e) {
             System.err.println("Database error updating car: " + e.getMessage());
-            e.printStackTrace();
+            recordError(e);
             return false;
         }
     }
