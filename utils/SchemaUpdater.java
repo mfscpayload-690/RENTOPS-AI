@@ -22,6 +22,52 @@ public class SchemaUpdater {
                 }
             }
 
+            // Check if exterior_image_url column exists in cars table
+            rs = meta.getColumns(null, null, "cars", "exterior_image_url");
+            if (rs.next()) {
+                System.out.println("Exterior image URL column already exists in cars table");
+            } else {
+                // Check if old image_url column exists and migrate data if needed
+                boolean hasOldImageColumn = false;
+                ResultSet oldImageRs = meta.getColumns(null, null, "cars", "image_url");
+                if (oldImageRs.next()) {
+                    hasOldImageColumn = true;
+                }
+
+                // Add exterior_image_url column
+                String sql = "ALTER TABLE cars ADD COLUMN exterior_image_url VARCHAR(255) DEFAULT NULL";
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate(sql);
+                    System.out.println("Exterior image URL column added successfully to cars table");
+
+                    // Migrate data from old image_url column if it exists
+                    if (hasOldImageColumn) {
+                        stmt.executeUpdate("UPDATE cars SET exterior_image_url = image_url WHERE image_url IS NOT NULL");
+                        System.out.println("Migrated data from image_url to exterior_image_url");
+                    }
+                }
+            }
+
+            // Check if interior_image_url column exists in cars table
+            rs = meta.getColumns(null, null, "cars", "interior_image_url");
+            if (rs.next()) {
+                System.out.println("Interior image URL column already exists in cars table");
+            } else {
+                // Add interior_image_url column
+                String sql = "ALTER TABLE cars ADD COLUMN interior_image_url VARCHAR(255) DEFAULT NULL";
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate(sql);
+                    System.out.println("Interior image URL column added successfully to cars table");
+
+                    // Check if old image_url column exists and migrate data if needed
+                    ResultSet oldImageRs = meta.getColumns(null, null, "cars", "image_url");
+                    if (oldImageRs.next()) {
+                        stmt.executeUpdate("UPDATE cars SET interior_image_url = image_url WHERE image_url IS NOT NULL");
+                        System.out.println("Migrated data from image_url to interior_image_url");
+                    }
+                }
+            }
+
             // Check if user_sessions table exists
             rs = meta.getTables(null, null, "user_sessions", null);
             if (rs.next()) {

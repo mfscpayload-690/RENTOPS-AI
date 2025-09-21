@@ -1,20 +1,77 @@
 package utils;
 
-import models.Car;
-
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import models.Car;
 
 public class ImageUtils {
 
     private static final String[] SUPPORTED_EXT = {".jpg", ".jpeg", ".png", ".gif"};
+    private static final String[] SUPPORTED_URL_PROTOCOLS = {"http://", "https://"};
+
+    // Simple LRU-like image cache with a maximum size
+    private static final int MAX_CACHE_SIZE = 50;
+    private static final Map<String, ImageIcon> imageCache = new HashMap<>();
+
+    /**
+     * Checks if a string is a URL (starts with http:// or https://)
+     */
+    public static boolean isUrl(String path) {
+        if (path == null) {
+            return false;
+        }
+        String lowerPath = path.toLowerCase();
+        for (String protocol : SUPPORTED_URL_PROTOCOLS) {
+            if (lowerPath.startsWith(protocol)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static List<ImageIcon> loadCarCategoryImages(Car car, String category, int maxW, int maxH) {
+        // First try to load from URL if car has imageUrl
+        if (car.getImageUrl() != null && !car.getImageUrl().isEmpty()) {
+            String urlPath = car.getImageUrl();
+            if (category != null && !category.isEmpty()) {
+                // If category specified, look for category-specific URLs
+                if (!urlPath.endsWith("/")) {
+                    urlPath += "/";
+                }
+                urlPath += category;
+            }
+
+            // If URL ends with /, assume it's a folder URL and try to load images
+            // Functionality could be expanded to fetch folder listings, but that's more complex
+            // For now, we'll try common image names
+            if (urlPath.endsWith("/")) {
+                List<ImageIcon> icons = loadCommonImagesFromUrl(urlPath, maxW, maxH);
+                if (!icons.isEmpty()) {
+                    return icons;
+                }
+            } // Check if URL directly points to an image
+            else if (isImageUrl(urlPath)) {
+                ImageIcon icon = loadFromUrl(urlPath, maxW, maxH);
+                if (icon != null) {
+                    List<ImageIcon> icons = new ArrayList<>();
+                    icons.add(icon);
+                    return icons;
+                }
+            }
+        }
+
+        // Fall back to local folders
         List<String> candidates = possiblePathsForCar(car, category);
         for (String path : candidates) {
             List<ImageIcon> icons = loadImageIconsFromFolder(path, maxW, maxH);
@@ -23,6 +80,37 @@ public class ImageUtils {
             }
         }
         return new ArrayList<>();
+    }
+
+    /**
+     * Check if URL points to an image based on extension
+     */
+    private static boolean isImageUrl(String url) {
+        return hasSupportedExt(url);
+    }
+
+    /**
+     * Try to load common image names from a URL folder
+     */
+    private static List<ImageIcon> loadCommonImagesFromUrl(String baseUrl, int maxW, int maxH) {
+        List<ImageIcon> icons = new ArrayList<>();
+        String[] commonNames = {"1.jpg", "2.jpg", "3.jpg", "front.jpg", "rear.jpg", "side.jpg",
+            "interior.jpg", "dashboard.jpg", "1.png", "2.png", "3.png", "main.jpg"};
+
+        for (String name : commonNames) {
+            String url = baseUrl;
+            if (!baseUrl.endsWith("/")) {
+                url += "/";
+            }
+            url += name;
+
+            ImageIcon icon = loadFromUrl(url, maxW, maxH);
+            if (icon != null) {
+                icons.add(icon);
+            }
+        }
+
+        return icons;
     }
 
     public static List<String> possiblePathsForCar(Car car, String category) {
@@ -55,9 +143,18 @@ public class ImageUtils {
         Arrays.sort(files);
         for (File f : files) {
             if (f.isFile() && hasSupportedExt(f.getName())) {
-                ImageIcon icon = new ImageIcon(f.getAbsolutePath());
-                Image scaled = scaleToFit(icon.getImage(), maxW, maxH);
-                result.add(new ImageIcon(scaled));
+                String filePath = f.getAbsolutePath();
+                String cacheKey = "file:" + filePath + "-" + maxW + "x" + maxH;
+
+                ImageIcon icon = getCachedImage(cacheKey, () -> {
+                    ImageIcon originalIcon = new ImageIcon(filePath);
+                    Image scaled = scaleToFit(originalIcon.getImage(), maxW, maxH);
+                    return new ImageIcon(scaled);
+                });
+
+                if (icon != null) {
+                    result.add(icon);
+                }
             }
         }
         return result;
@@ -71,6 +168,43 @@ public class ImageUtils {
             }
         }
         return false;
+    }
+
+    /**
+     * Loads an image from a URL
+     *
+     * @param urlString The URL to load from
+     * @param maxW Maximum width
+     * @param maxH Maximum height
+     * @return The loaded ImageIcon or null if failed
+     */
+    public static ImageIcon loadFromUrl(String urlString, int maxW, int maxH) {
+        // Generate a unique cache key based on URL and dimensions
+        String cacheKey = "url:" + urlString + "-" + maxW + "x" + maxH;
+
+        return getCachedImage(cacheKey, () -> {
+            try {
+                URL url = new URL(urlString);
+                URLConnection conn = url.openConnection();
+                // Set user-agent to avoid some server restrictions
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                conn.setConnectTimeout(5000); // 5 second timeout
+                conn.setReadTimeout(10000);   // 10 second timeout
+
+                BufferedImage img = ImageIO.read(conn.getInputStream());
+                if (img == null) {
+                    return null;
+                }
+
+                Image scaled = scaleToFit(img, maxW, maxH);
+                return new ImageIcon(scaled);
+            } catch (IOException e) {
+                System.err.println("Error loading image from URL: " + urlString);
+                // Log error but don't print full stack trace
+                System.err.println("Error: " + e.getMessage());
+                return null;
+            }
+        });
     }
 
     public static Image scaleToFit(Image img, int maxW, int maxH) {
@@ -94,6 +228,44 @@ public class ImageUtils {
         g2.drawImage(scaled, 0, 0, null);
         g2.dispose();
         return out;
+    }
+
+    /**
+     * Get a cached image or add it to the cache if not present
+     *
+     * @param key The cache key
+     * @param creator Function to create the image if not in cache
+     * @return The cached or newly created image
+     */
+    private static ImageIcon getCachedImage(String key, java.util.function.Supplier<ImageIcon> creator) {
+        // Check if image is in cache
+        if (imageCache.containsKey(key)) {
+            return imageCache.get(key);
+        }
+
+        // Create new image
+        ImageIcon image = creator.get();
+
+        // If created successfully, add to cache
+        if (image != null) {
+            // If cache is full, remove an entry (could implement more sophisticated LRU)
+            if (imageCache.size() >= MAX_CACHE_SIZE) {
+                String keyToRemove = imageCache.keySet().iterator().next();
+                imageCache.remove(keyToRemove);
+            }
+
+            // Add to cache
+            imageCache.put(key, image);
+        }
+
+        return image;
+    }
+
+    /**
+     * Clear the image cache
+     */
+    public static void clearCache() {
+        imageCache.clear();
     }
 
     private static String sanitize(String s) {

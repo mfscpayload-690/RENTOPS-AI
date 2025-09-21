@@ -35,7 +35,30 @@ public class CarDAO {
             while (rs.next()) {
                 count++;
                 try {
-                    // Use the constructor with or without total_km_driven based on column existence
+                    // Try to get image URLs if they exist
+                    String exteriorImageUrl = null;
+                    String interiorImageUrl = null;
+
+                    // Try exterior_image_url first
+                    try {
+                        exteriorImageUrl = rs.getString("exterior_image_url");
+                    } catch (SQLException e) {
+                        // Try the old image_url as fallback
+                        try {
+                            exteriorImageUrl = rs.getString("image_url");
+                        } catch (SQLException ex) {
+                            // Neither column exists, that's okay
+                        }
+                    }
+
+                    // Try interior_image_url
+                    try {
+                        interiorImageUrl = rs.getString("interior_image_url");
+                    } catch (SQLException e) {
+                        // Use exterior image as fallback for interior
+                        interiorImageUrl = exteriorImageUrl;
+                    }
+
                     if (hasKmDrivenColumn) {
                         cars.add(new Car(
                                 rs.getInt("id"),
@@ -46,7 +69,9 @@ public class CarDAO {
                                 rs.getString("status"),
                                 rs.getString("specs"),
                                 rs.getBigDecimal("price_per_day"),
-                                rs.getInt("total_km_driven")
+                                rs.getInt("total_km_driven"),
+                                exteriorImageUrl,
+                                interiorImageUrl
                         ));
                     } else {
                         cars.add(new Car(
@@ -57,7 +82,10 @@ public class CarDAO {
                                 rs.getString("license_plate"),
                                 rs.getString("status"),
                                 rs.getString("specs"),
-                                rs.getBigDecimal("price_per_day")
+                                rs.getBigDecimal("price_per_day"),
+                                0,
+                                exteriorImageUrl,
+                                interiorImageUrl
                         ));
                     }
                 } catch (SQLException ex) {
@@ -149,6 +177,30 @@ public class CarDAO {
                         System.err.println("CarDAO: Error checking columns in getById: " + e.getMessage());
                     }
 
+                    // Try to get image URLs if they exist
+                    String exteriorImageUrl = null;
+                    String interiorImageUrl = null;
+
+                    // Try exterior_image_url first
+                    try {
+                        exteriorImageUrl = rs.getString("exterior_image_url");
+                    } catch (SQLException e) {
+                        // Try the old image_url as fallback
+                        try {
+                            exteriorImageUrl = rs.getString("image_url");
+                        } catch (SQLException ex) {
+                            // Neither column exists, that's okay
+                        }
+                    }
+
+                    // Try interior_image_url
+                    try {
+                        interiorImageUrl = rs.getString("interior_image_url");
+                    } catch (SQLException e) {
+                        // Use exterior image as fallback for interior
+                        interiorImageUrl = exteriorImageUrl;
+                    }
+
                     if (hasKmDrivenColumn) {
                         return new Car(
                                 rs.getInt("id"),
@@ -159,7 +211,9 @@ public class CarDAO {
                                 rs.getString("status"),
                                 rs.getString("specs"),
                                 rs.getBigDecimal("price_per_day"),
-                                rs.getInt("total_km_driven")
+                                rs.getInt("total_km_driven"),
+                                exteriorImageUrl,
+                                interiorImageUrl
                         );
                     } else {
                         return new Car(
@@ -170,7 +224,10 @@ public class CarDAO {
                                 rs.getString("license_plate"),
                                 rs.getString("status"),
                                 rs.getString("specs"),
-                                rs.getBigDecimal("price_per_day")
+                                rs.getBigDecimal("price_per_day"),
+                                0,
+                                exteriorImageUrl,
+                                interiorImageUrl
                         );
                     }
                 }
@@ -183,7 +240,7 @@ public class CarDAO {
     }
 
     public boolean addCar(Car car) {
-        String sql = "INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven, exterior_image_url, interior_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, car.getMake());
             stmt.setString(2, car.getModel());
@@ -193,6 +250,8 @@ public class CarDAO {
             stmt.setString(6, car.getSpecs());
             stmt.setBigDecimal(7, car.getPricePerDay());
             stmt.setInt(8, car.getTotalKmDriven());
+            stmt.setString(9, car.getExteriorImageUrl());
+            stmt.setString(10, car.getInteriorImageUrl());
             return stmt.executeUpdate() == 1;
         } catch (SQLException e) {
             System.err.println("Database error adding car: " + e.getMessage());
@@ -202,7 +261,7 @@ public class CarDAO {
     }
 
     public boolean updateCar(Car car) {
-        String sql = "UPDATE cars SET make = ?, model = ?, year = ?, license_plate = ?, status = ?, specs = ?, price_per_day = ?, total_km_driven = ? WHERE id = ?";
+        String sql = "UPDATE cars SET make = ?, model = ?, year = ?, license_plate = ?, status = ?, specs = ?, price_per_day = ?, total_km_driven = ?, exterior_image_url = ?, interior_image_url = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, car.getMake());
             stmt.setString(2, car.getModel());
@@ -212,7 +271,9 @@ public class CarDAO {
             stmt.setString(6, car.getSpecs());
             stmt.setBigDecimal(7, car.getPricePerDay());
             stmt.setInt(8, car.getTotalKmDriven());
-            stmt.setInt(9, car.getId());
+            stmt.setString(9, car.getExteriorImageUrl());
+            stmt.setString(10, car.getInteriorImageUrl());
+            stmt.setInt(11, car.getId());
             return stmt.executeUpdate() == 1;
         } catch (SQLException e) {
             System.err.println("Database error updating car: " + e.getMessage());

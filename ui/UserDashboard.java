@@ -5,6 +5,7 @@ import dao.BookingDAO;
 import models.Car;
 import models.Booking;
 import services.AuthService;
+import ui.components.CarDetailsDialog;
 import ui.components.KeyboardShortcuts;
 import ui.components.Toast;
 
@@ -290,6 +291,33 @@ public class UserDashboard extends JPanel {
         JPanel bottomPanel = new JPanel(new FlowLayout());
         bottomPanel.setBackground(new Color(245, 247, 250));
 
+        JButton viewDetailsButton = new JButton("View Car Details");
+        viewDetailsButton.setBackground(new Color(41, 128, 185));
+        viewDetailsButton.setForeground(Color.WHITE);
+        viewDetailsButton.setFocusPainted(false);
+        viewDetailsButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+        viewDetailsButton.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+            if (selectedRow >= 0) {
+                int modelRow = table.convertRowIndexToModel(selectedRow);
+                int carId = (int) model.getValueAt(modelRow, 0);
+                try {
+                    Car car = carDAO.getById(carId);
+                    if (car != null) {
+                        new CarDetailsDialog(this, car).setVisible(true);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Car details not found", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "Error loading car details: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Please select a car first.");
+            }
+        });
+
         JButton rentButton = new JButton("Rent Selected Car");
         rentButton.setBackground(new Color(46, 204, 113));
         rentButton.setForeground(Color.WHITE);
@@ -351,8 +379,36 @@ public class UserDashboard extends JPanel {
             }
         });
 
+        bottomPanel.add(viewDetailsButton);
+        bottomPanel.add(Box.createHorizontalStrut(10));
         bottomPanel.add(rentButton);
         panel.add(bottomPanel, BorderLayout.SOUTH);
+
+        // Add double-click listener for car details
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int selectedRow = table.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        int modelRow = table.convertRowIndexToModel(selectedRow);
+                        int carId = (int) model.getValueAt(modelRow, 0);
+                        try {
+                            Car car = carDAO.getById(carId);
+                            if (car != null) {
+                                new CarDetailsDialog(UserDashboard.this, car).setVisible(true);
+                            }
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            JOptionPane.showMessageDialog(UserDashboard.this,
+                                    "Error loading car details: " + ex.getMessage(),
+                                    "Error",
+                                    JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                }
+            }
+        });
 
         // Load available cars
         loadAvailableCars(model);

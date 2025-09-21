@@ -1,12 +1,19 @@
 package ui.components;
 
 import models.Car;
-import ui.components.Toast;
+import ui.compon
+
+specsScrollPane = new JScrollPane(specsField);
+        priceField = new JTextField(20);
+        totalKmDrivenField = new JTextField(20);
+        exteriorImageUrlField = new JTextField(20);
+        interiorImageUrlField = new JTextField(20);.Toast;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+
 import java.math.BigDecimal;
 
 /**
@@ -40,7 +47,7 @@ public class CarFormDialog extends JDialog {
         // Enable resizing and set appropriate size
         setResizable(true);
         setMinimumSize(new Dimension(450, 400));
-        setPreferredSize(new Dimension(500, 550)); // Made taller to accommodate new fields
+        setPreferredSize(new Dimension(500, 450));
 
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -63,8 +70,7 @@ public class CarFormDialog extends JDialog {
         JScrollPane specsScrollPane = new JScrollPane(specsField);
         priceField = new JTextField(20);
         totalKmDrivenField = new JTextField(20);
-        exteriorImageUrlField = new JTextField(20);
-        interiorImageUrlField = new JTextField(20);
+        imageUrlField = new JTextField(20);
 
         // Populate fields if editing
         if (existingCar != null) {
@@ -76,11 +82,8 @@ public class CarFormDialog extends JDialog {
             specsField.setText(existingCar.getSpecs());
             priceField.setText(existingCar.getPricePerDay().toString());
             totalKmDrivenField.setText(String.valueOf(existingCar.getTotalKmDriven()));
-            if (existingCar.getExteriorImageUrl() != null) {
-                exteriorImageUrlField.setText(existingCar.getExteriorImageUrl());
-            }
-            if (existingCar.getInteriorImageUrl() != null) {
-                interiorImageUrlField.setText(existingCar.getInteriorImageUrl());
+            if (existingCar.getImageUrl() != null) {
+                imageUrlField.setText(existingCar.getImageUrl());
             }
         } else {
             totalKmDrivenField.setText("0");
@@ -174,21 +177,11 @@ public class CarFormDialog extends JDialog {
         gbc.gridx = 0;
         gbc.gridy = 8;
         gbc.weightx = 0.2;
-        formPanel.add(new JLabel("Exterior Image URL:"), gbc);
+        formPanel.add(new JLabel("Image URL:"), gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 0.8;
-        formPanel.add(exteriorImageUrlField, gbc);
-
-        // Row 10
-        gbc.gridx = 0;
-        gbc.gridy = 9;
-        gbc.weightx = 0.2;
-        formPanel.add(new JLabel("Interior Image URL:"), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 0.8;
-        formPanel.add(interiorImageUrlField, gbc);
+        formPanel.add(imageUrlField, gbc);
 
         // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -291,13 +284,12 @@ public class CarFormDialog extends JDialog {
                 return false;
             }
 
-            // Get image URLs
-            String exteriorImageUrl = exteriorImageUrlField.getText().trim();
-            String interiorImageUrl = interiorImageUrlField.getText().trim();
+            // Get image URL
+            String imageUrl = imageUrlField.getText().trim();
 
             // Create result car
             int id = (existingCar != null) ? existingCar.getId() : 0;
-            result = new Car(id, make, modelName, year, license, status, specs, price, totalKmDriven, exteriorImageUrl, interiorImageUrl);
+            result = new Car(id, make, modelName, year, license, status, specs, price, totalKmDriven, imageUrl);
 
             return true;
         } catch (Exception ex) {
