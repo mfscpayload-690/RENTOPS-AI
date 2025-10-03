@@ -1,13 +1,13 @@
 package ui.components;
 
 import models.Car;
-import ui.components.Toast;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * A resizable dialog for adding or editing car information.
@@ -22,6 +22,8 @@ public class CarFormDialog extends JDialog {
     private JTextArea specsField;
     private JTextField priceField;
     private JTextField totalKmDrivenField;
+    private MultiImagePanel exteriorImagePanel;
+    private MultiImagePanel interiorImagePanel;
     private boolean approved = false;
     private Car result = null;
 
@@ -37,11 +39,65 @@ public class CarFormDialog extends JDialog {
 
         // Enable resizing and set appropriate size
         setResizable(true);
-        setMinimumSize(new Dimension(450, 400));
-        setPreferredSize(new Dimension(500, 450));
+        setMinimumSize(new Dimension(600, 500));
+        setPreferredSize(new Dimension(750, 600));
 
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        // Create tabbed pane for form and images
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        // Car Details Tab
+        JPanel detailsTab = createDetailsTab();
+        tabbedPane.addTab("Car Details", detailsTab);
+
+        // Images Tab
+        JPanel imagesTab = createImagesTab();
+        tabbedPane.addTab("Images", imagesTab);
+
+        contentPanel.add(tabbedPane, BorderLayout.CENTER);
+
+        // Load existing car data if editing
+        loadExistingCarData(existingCar);
+
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton okButton = new JButton("OK");
+        JButton cancelButton = new JButton("Cancel");
+
+        okButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (validateAndCreateResult(existingCar)) {
+                    approved = true;
+                    dispose();
+                }
+            }
+        });
+
+        cancelButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        });
+
+        buttonPanel.add(okButton);
+        buttonPanel.add(cancelButton);
+
+        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        setContentPane(contentPanel);
+        pack();
+        setLocationRelativeTo(parent);
+    }
+
+    /**
+     * Creates the car details tab
+     */
+    private JPanel createDetailsTab() {
+        JPanel detailsPanel = new JPanel(new BorderLayout());
 
         // Main form area with improved layout for long fields
         JPanel formPanel = new JPanel(new GridBagLayout());
@@ -49,32 +105,19 @@ public class CarFormDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
 
-        // Add form fields
+        // Initialize form fields
         makeField = new JTextField(20);
         modelField = new JTextField(20);
         yearField = new JTextField(20);
         licenseField = new JTextField(20);
         statusBox = new JComboBox<>(new String[]{"available", "rented", "maintenance"});
-        specsField = new JTextArea(4, 20);
+        specsField = new JTextArea(5, 20);
         specsField.setLineWrap(true);
         specsField.setWrapStyleWord(true);
         JScrollPane specsScrollPane = new JScrollPane(specsField);
+        specsScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         priceField = new JTextField(20);
         totalKmDrivenField = new JTextField(20);
-
-        // Populate fields if editing
-        if (existingCar != null) {
-            makeField.setText(existingCar.getMake());
-            modelField.setText(existingCar.getModel());
-            yearField.setText(String.valueOf(existingCar.getYear()));
-            licenseField.setText(existingCar.getLicensePlate());
-            statusBox.setSelectedItem(existingCar.getStatus());
-            specsField.setText(existingCar.getSpecs());
-            priceField.setText(existingCar.getPricePerDay().toString());
-            totalKmDrivenField.setText(String.valueOf(existingCar.getTotalKmDriven()));
-        } else {
-            totalKmDrivenField.setText("0");
-        }
 
         // Row 1
         gbc.gridx = 0;
@@ -160,37 +203,45 @@ public class CarFormDialog extends JDialog {
         gbc.weightx = 0.8;
         formPanel.add(priceField, gbc);
 
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton okButton = new JButton("OK");
-        JButton cancelButton = new JButton("Cancel");
+        detailsPanel.add(formPanel, BorderLayout.CENTER);
+        return detailsPanel;
+    }
 
-        okButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (validateAndCreateResult(existingCar)) {
-                    approved = true;
-                    dispose();
-                }
-            }
-        });
+    /**
+     * Creates the images tab
+     */
+    private JPanel createImagesTab() {
+        JPanel imagesPanel = new JPanel(new GridLayout(2, 1, 10, 10));
+        imagesPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        cancelButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                dispose();
-            }
-        });
+        // Create image panels
+        exteriorImagePanel = new MultiImagePanel("exterior", 5);
+        interiorImagePanel = new MultiImagePanel("interior", 5);
 
-        buttonPanel.add(okButton);
-        buttonPanel.add(cancelButton);
+        imagesPanel.add(exteriorImagePanel);
+        imagesPanel.add(interiorImagePanel);
 
-        contentPanel.add(formPanel, BorderLayout.CENTER);
-        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
+        return imagesPanel;
+    }
 
-        setContentPane(contentPanel);
-        pack();
-        setLocationRelativeTo(parent);
+    /**
+     * Loads existing car data into the form
+     */
+    private void loadExistingCarData(Car existingCar) {
+        if (existingCar != null) {
+            makeField.setText(existingCar.getMake());
+            modelField.setText(existingCar.getModel());
+            yearField.setText(String.valueOf(existingCar.getYear()));
+            licenseField.setText(existingCar.getLicensePlate());
+            statusBox.setSelectedItem(existingCar.getStatus());
+            specsField.setText(existingCar.getSpecs());
+            priceField.setText(existingCar.getPricePerDay().toString());
+            totalKmDrivenField.setText(String.valueOf(existingCar.getTotalKmDriven()));
+
+            // Load existing images
+            exteriorImagePanel.setImagePaths(existingCar.getExteriorImages());
+            interiorImagePanel.setImagePaths(existingCar.getInteriorImages());
+        }
     }
 
     /**
@@ -264,6 +315,13 @@ public class CarFormDialog extends JDialog {
             // Create result car
             int id = (existingCar != null) ? existingCar.getId() : 0;
             result = new Car(id, make, modelName, year, license, status, specs, price, totalKmDriven);
+
+            // Add uploaded images to the car object
+            List<String> exteriorImagePaths = exteriorImagePanel.getImagePaths();
+            List<String> interiorImagePaths = interiorImagePanel.getImagePaths();
+
+            result.setExteriorImages(exteriorImagePaths);
+            result.setInteriorImages(interiorImagePaths);
 
             return true;
         } catch (Exception ex) {
