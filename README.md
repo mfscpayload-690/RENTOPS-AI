@@ -1,5 +1,5 @@
 # RENTOPS-AI
-Modern Java Swing application for rental car operations with a clean DAO/MVC structure and future-friendly AI/NLP integration points.
+Modern Java Swing application for rental car operations with a clean DAO/MVC structure and future-friendly AI/NLP integration points. **(ACADEMIC PROJECT)**
 
 ---
 
@@ -119,17 +119,9 @@ If you see driver or connection errors:
 ---
 
 ## Notes on Authentication
-- Passwords are stored as salted hashes; never store plain text passwords
+- Passwords are stored as **salted hashes**; never store plain text passwords
 - The seed admin in db_setup.sql is a placeholder; create users via the app’s Register flow or insert a properly hashed password
 - Session persistence uses user_sessions; you can disable by not creating that table
-
----
-
-## Recent Changes (highlights)
-- Added total_km_driven to cars table and model with DAO compatibility checks
-- Created utilities: SqlScriptRunner and DbQueryRunner
-- Added user_sessions table and SessionManager for persistent login
-- Inserted 13 new cars (total inventory: 20; available: 19)
 
 ---
 
