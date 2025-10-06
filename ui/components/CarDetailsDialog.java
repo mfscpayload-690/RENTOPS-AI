@@ -118,10 +118,6 @@ public class CarDetailsDialog extends JDialog {
         java.util.List<ImageIcon> interior = ImageUtils.loadCarCategoryImages(car, "interior", 380, 240);
         java.util.List<ImageIcon> exterior = ImageUtils.loadCarCategoryImages(car, "exterior", 380, 240);
 
-        // Log image URLs for debugging
-        System.out.println("Interior image URL: " + car.getInteriorImageUrl());
-        System.out.println("Exterior image URL: " + car.getExteriorImageUrl());
-
         JPanel interiorPanel = new JPanel(new BorderLayout());
         interiorPanel.add(new JLabel("Interior", SwingConstants.CENTER), BorderLayout.NORTH);
         interiorPanel.add(new ImageCarouselPanel(interior), BorderLayout.CENTER);
