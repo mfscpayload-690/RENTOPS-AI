@@ -3,19 +3,29 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Main",
-            "request": "launch",
-            "mainClass": "ui.Main",
-            "projectName": "RENTOPS-AI_39c7ac93"
-        },
-        {
-            "type": "java",
-            "name": "Launch Rentops-AI",
+            "name": "Launch RENTOPS-AI Main",
             "request": "launch",
             "mainClass": "ui.Main",
             "projectName": "RENTOPS-AI",
-            "args": "",
-            "console": "internalConsole"
+            "classPaths": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/mysql-connector-j-9.4.0.jar"
+            ],
+            "vmArgs": [],
+            "args": [],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Launch Car Management Test",
+            "request": "launch",
+            "mainClass": "ui.components.CarManagementTest",
+            "projectName": "RENTOPS-AI",
+            "classPaths": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/mysql-connector-j-9.4.0.jar"
+            ],
+            "console": "integratedTerminal"
         }
     ]
 }

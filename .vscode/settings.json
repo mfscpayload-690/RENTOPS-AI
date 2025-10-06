@@ -1,6 +1,16 @@
 {
+    "java.home": "D:\\Windows OS C softwares\\JAVA JDK",
+    "java.configuration.detectJdksAtStart": false,
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.eclipse.downloadSources": true,
+    "java.configuration.checkProjectSettingsExclusions": false,
     "java.project.sourcePaths": [
-        "."
+        ".",
+        "dao",
+        "models", 
+        "services",
+        "ui",
+        "utils"
     ],
     "java.project.referencedLibraries": [
         "lib/**/*.jar",
