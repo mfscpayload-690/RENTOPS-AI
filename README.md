@@ -1,5 +1,5 @@
 # RENTOPS-AI
-Modern Java Swing application for rental car operations with a clean DAO/MVC structure and future-friendly AI/NLP integration points.
+Modern Java Swing application for rental car operations with a clean DAO/MVC structure and future-friendly AI/NLP integration points. **(ACADEMIC PROJECT)**
 
 ---
 
