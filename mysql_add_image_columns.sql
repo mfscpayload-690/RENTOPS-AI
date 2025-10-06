@@ -1,3 +1,0 @@
-USE rentops_ai;
-ALTER TABLE cars ADD COLUMN exterior_image_url VARCHAR(512) DEFAULT NULL;
-ALTER TABLE cars ADD COLUMN interior_image_url VARCHAR(512) DEFAULT NULL;
