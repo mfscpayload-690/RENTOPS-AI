@@ -7,6 +7,12 @@ import ui.components.KeyboardShortcuts;
 public class Main {
 
     public static void main(String[] args) {
+        // Seed cars before launching UI (non-blocking safety)
+        try {
+            utils.DatabaseSeeder.seedCarsIfNeeded();
+        } catch (Exception e) {
+            System.err.println("Startup seeding failed: " + e.getMessage());
+        }
         SwingUtilities.invokeLater(() -> new RentopsAIMainFrame().setVisible(true));
     }
 }

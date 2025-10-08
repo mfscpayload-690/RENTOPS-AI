@@ -1,6 +1,6 @@
--- SQL Script to add new car entries to the rentops_ai database
+-- SQL Script to add new car entries to the rentops_ai database (with IGNORE for duplicates)
 
-INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven)
+INSERT IGNORE INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven)
 VALUES 
 -- Car 1
 ('Maruti Suzuki', 'Dzire', 2018, 'KL28F3345', 'available', 

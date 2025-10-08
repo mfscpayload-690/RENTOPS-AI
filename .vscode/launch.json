@@ -6,6 +6,13 @@
         "name": "Main",
         "request": "launch",
         "mainClass": "Main",
+        "projectName": "rentops-ai"
+    },
+    {
+        "type": "java",
+        "name": "Main",
+        "request": "launch",
+        "mainClass": "Main",
         "projectName": "RENTOPS-AI_39c7ac93"
     },
     {
