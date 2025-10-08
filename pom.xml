@@ -10,6 +10,12 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
+    <!-- MySQL JDBC Driver -->
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>8.0.33</version>
+    </dependency>
     <!-- JSON -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -51,6 +57,12 @@
       <version>5.11.0</version>
       <scope>test</scope>
     </dependency>
+  
+    <dependency>
+      <groupId>net.brunomendola.querity</groupId>
+      <artifactId>querity-test</artifactId>
+      <version>2.3.2</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -88,6 +100,15 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+      </plugin>
+      <!-- Exec plugin to run the Swing application easily: mvn exec:java -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <mainClass>ui.Main</mainClass>
+        </configuration>
       </plugin>
     </plugins>
   </build>

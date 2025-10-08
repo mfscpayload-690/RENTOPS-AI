@@ -20,6 +20,12 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
 
+import com.rentops.ai.config.AiComponents;
+import com.rentops.ai.intent.IntentExtractionService;
+import com.rentops.ai.summarize.ChunkSummarizerService;
+import com.rentops.ai.summarize.MergeSummarizerService;
+import com.rentops.ai.summarize.SummarizationPipeline;
+
 import dao.CarDAO;
 import models.Car;
 
@@ -33,7 +39,12 @@ public class AIAssistantPanel extends JPanel {
     private JTextField queryField;
     private JTextArea responseArea;
     private JProgressBar progressBar;
-    private CarDAO carDAO;
+    private final CarDAO carDAO;
+
+    // AI services
+    private AiComponents aiComponents;
+    private IntentExtractionService intentService;
+    private SummarizationPipeline summarizationService;
 
     // Modern color scheme consistent with user interface
     private static final Color PRIMARY_COLOR = new Color(41, 128, 185);
@@ -45,7 +56,38 @@ public class AIAssistantPanel extends JPanel {
 
     public AIAssistantPanel() {
         this.carDAO = new CarDAO();
+        initializeAIServices();
         initializeUI();
+    }
+
+    private void initializeAIServices() {
+        try {
+            aiComponents = AiComponents.build(false);
+            if (aiComponents.config.isEnabled()) {
+                intentService = new IntentExtractionService(
+                        aiComponents.config,
+                        aiComponents.router,
+                        aiComponents.llm,
+                        aiComponents.safety
+                );
+
+                ChunkSummarizerService chunkSummarizer = new ChunkSummarizerService(
+                        aiComponents.llm,
+                        aiComponents.config.isEnabled()
+                );
+                MergeSummarizerService mergeSummarizer = new MergeSummarizerService(
+                        aiComponents.llm,
+                        aiComponents.config.isEnabled()
+                );
+                summarizationService = new SummarizationPipeline(
+                        1500, // target chunk size for user queries
+                        chunkSummarizer,
+                        mergeSummarizer
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to initialize AI services: " + e.getMessage());
+        }
     }
 
     private void initializeUI() {
@@ -309,112 +351,233 @@ public class AIAssistantPanel extends JPanel {
 
             String lowerQuery = query.toLowerCase();
 
-            // Handle availability queries
-            if (lowerQuery.contains("available") || lowerQuery.contains("show")) {
-                response.append("🚗 AVAILABLE CARS:\n\n");
+            // Try to use real AI intent extraction first
+            if (aiComponents != null && aiComponents.config.isEnabled() && intentService != null) {
+                try {
+                    com.rentops.ai.intent.BookingIntent intent = intentService.extract(query);
 
-                if (lowerQuery.contains("suv")) {
-                    response.append("SUV vehicles available:\n");
-                    availableCars = availableCars.stream()
-                            .filter(car -> getCarType(car).equalsIgnoreCase("SUV"))
-                            .collect(java.util.stream.Collectors.toList());
-                } else if (lowerQuery.contains("luxury")) {
-                    response.append("Luxury vehicles available:\n");
-                    availableCars = availableCars.stream()
-                            .filter(car -> isLuxuryCar(car))
-                            .collect(java.util.stream.Collectors.toList());
-                } else {
-                    response.append("All available vehicles:\n");
-                }
+                    response.append("🧠 AI Analysis Results:\n");
+                    response.append("Action Detected: ").append(intent.action()).append("\n");
 
-                if (availableCars.isEmpty()) {
-                    response.append("❌ No vehicles matching your criteria are currently available.\n");
-                } else {
-                    response.append(String.format("Found %d vehicles:\n\n", availableCars.size()));
-
-                    for (int i = 0; i < Math.min(5, availableCars.size()); i++) {
-                        Car car = availableCars.get(i);
-                        response.append(String.format("🚙 %s %s (%s)\n", car.getMake(), car.getModel(), car.getYear()));
-                        response.append(String.format("   Type: %s | Seats: %d | Price: ₹%.2f/day\n\n",
-                                getCarType(car), getSeatingCapacity(car), car.getPricePerDay()));
+                    if (intent.passengers() > 0) {
+                        response.append("Passengers: ").append(intent.passengers()).append(" people\n");
                     }
 
-                    if (availableCars.size() > 5) {
-                        response.append(String.format("... and %d more vehicles available!\n", availableCars.size() - 5));
+                    if (intent.vehicleType() != null && !intent.vehicleType().isBlank()) {
+                        response.append("Vehicle Type: ").append(intent.vehicleType()).append("\n");
                     }
-                }
-            } // Handle passenger requirements
-            else if (lowerQuery.contains("people") || lowerQuery.contains("passengers")) {
-                int passengerCount = extractPassengerCount(lowerQuery);
-                response.append(String.format("🧑‍🤝‍🧑 CARS FOR %d PASSENGERS:\n\n", passengerCount));
 
-                availableCars = availableCars.stream()
-                        .filter(car -> getSeatingCapacity(car) >= passengerCount)
-                        .collect(java.util.stream.Collectors.toList());
-
-                if (availableCars.isEmpty()) {
-                    response.append("❌ No vehicles available for that many passengers.\n");
-                } else {
-                    response.append(String.format("Found %d suitable vehicles:\n\n", availableCars.size()));
-
-                    for (int i = 0; i < Math.min(4, availableCars.size()); i++) {
-                        Car car = availableCars.get(i);
-                        response.append(String.format("🚗 %s %s - %d seats (₹%.2f/day)\n",
-                                car.getMake(), car.getModel(), getSeatingCapacity(car), car.getPricePerDay()));
+                    if (intent.pickupLocation() != null && !intent.pickupLocation().isBlank()) {
+                        response.append("Pickup: ").append(intent.pickupLocation()).append("\n");
                     }
+
+                    if (intent.dropoffLocation() != null && !intent.dropoffLocation().isBlank()) {
+                        response.append("Dropoff: ").append(intent.dropoffLocation()).append("\n");
+                    }
+
+                    response.append("AI Confidence: High (Groq AI Model)\n\n");
+
+                    // Process based on AI-detected intent
+                    switch (intent.action()) {
+                        case CREATE:
+                            response.append("🚗 BOOKING ASSISTANCE:\n\n");
+
+                            // Filter cars based on AI-extracted criteria
+                            List<Car> filteredCars = availableCars;
+
+                            if (intent.passengers() > 0) {
+                                final int passengers = intent.passengers();
+                                filteredCars = filteredCars.stream()
+                                        .filter(car -> getSeatingCapacity(car) >= passengers)
+                                        .collect(java.util.stream.Collectors.toList());
+                            }
+
+                            if (intent.vehicleType() != null && !intent.vehicleType().isBlank()) {
+                                final String vehicleType = intent.vehicleType().toLowerCase();
+                                filteredCars = filteredCars.stream()
+                                        .filter(car -> getCarType(car).toLowerCase().contains(vehicleType)
+                                        || car.getModel().toLowerCase().contains(vehicleType)
+                                        || car.getMake().toLowerCase().contains(vehicleType))
+                                        .collect(java.util.stream.Collectors.toList());
+                            }
+
+                            if (filteredCars.isEmpty()) {
+                                response.append("❌ No vehicles match your AI-analyzed criteria.\n");
+                                response.append("💡 Try adjusting your requirements or contact support.\n");
+                            } else {
+                                response.append(String.format("Found %d vehicles matching your AI-analyzed requirements:\n\n", filteredCars.size()));
+
+                                for (int i = 0; i < Math.min(4, filteredCars.size()); i++) {
+                                    Car car = filteredCars.get(i);
+                                    response.append(String.format("🚙 %s %s (%s)\n", car.getMake(), car.getModel(), car.getYear()));
+                                    response.append(String.format("   Seats: %d | Type: %s | Price: ₹%.2f/day\n\n",
+                                            getSeatingCapacity(car), getCarType(car), car.getPricePerDay()));
+                                }
+
+                                if (filteredCars.size() > 4) {
+                                    response.append(String.format("... and %d more matching vehicles!\n", filteredCars.size() - 4));
+                                }
+                            }
+                            break;
+
+                        case QUERY:
+                            response.append("📊 AVAILABILITY STATUS:\n\n");
+                            response.append(String.format("Total Available Vehicles: %d\n", availableCars.size()));
+
+                            // Group by type for summary
+                            java.util.Map<String, Long> carsByType = availableCars.stream()
+                                    .collect(java.util.stream.Collectors.groupingBy(
+                                            this::getCarType,
+                                            java.util.stream.Collectors.counting()
+                                    ));
+
+                            response.append("Breakdown by Type:\n");
+                            carsByType.forEach((type, count)
+                                    -> response.append(String.format("• %s: %d vehicles\n", type, count))
+                            );
+                            break;
+
+                        default:
+                            response.append("🔍 GENERAL CAR SEARCH:\n\n");
+                            response.append("Here are some available options:\n");
+
+                            for (int i = 0; i < Math.min(3, availableCars.size()); i++) {
+                                Car car = availableCars.get(i);
+                                response.append(String.format("🚗 %s %s - ₹%.2f/day\n",
+                                        car.getMake(), car.getModel(), car.getPricePerDay()));
+                            }
+
+                            response.append("\n💡 Try being more specific: \"I need an SUV for 5 people\" or \"Show luxury cars\"\n");
+                            break;
+                    }
+
+                } catch (Exception aiError) {
+                    response.append("⚠️ AI processing unavailable: ").append(aiError.getMessage()).append("\n");
+                    response.append("Falling back to basic pattern matching...\n\n");
+                    return generateFallbackResponse(query, availableCars);
                 }
-            } // Handle recommendations
-            else if (lowerQuery.contains("recommend") || lowerQuery.contains("suggest") || lowerQuery.contains("best")) {
-                response.append("💡 AI RECOMMENDATIONS:\n\n");
 
-                // Sort by value (features vs price)
-                availableCars = availableCars.stream()
-                        .sorted((a, b) -> {
-                            double valueA = getSeatingCapacity(a) * 100.0 / a.getPricePerDay().doubleValue();
-                            double valueB = getSeatingCapacity(b) * 100.0 / b.getPricePerDay().doubleValue();
-                            return Double.compare(valueB, valueA);
-                        })
-                        .collect(java.util.stream.Collectors.toList());
-
-                response.append("Top recommendations based on value and features:\n\n");
-
-                for (int i = 0; i < Math.min(3, availableCars.size()); i++) {
-                    Car car = availableCars.get(i);
-                    response.append(String.format("🏆 #%d: %s %s\n", i + 1, car.getMake(), car.getModel()));
-                    response.append(String.format("   Perfect for: %s\n", getRecommendationReason(car)));
-                    response.append(String.format("   Price: ₹%.2f/day | Seats: %d\n\n", car.getPricePerDay(), getSeatingCapacity(car)));
-                }
-            } // Handle booking inquiries
-            else if (lowerQuery.contains("book") || lowerQuery.contains("rent") || lowerQuery.contains("reserve")) {
-                response.append("📅 BOOKING ASSISTANCE:\n\n");
-                response.append("I'd be happy to help you with booking! Here's how:\n\n");
-                response.append("1. Use the 'Search Cars' tab to browse available vehicles\n");
-                response.append("2. Select your preferred car\n");
-                response.append("3. Choose your rental dates\n");
-                response.append("4. Complete your booking\n\n");
-                response.append("💡 Need specific recommendations? Just ask me about car types or passenger requirements!");
-            } // General help
-            else {
-                response.append("🤖 HOW CAN I HELP?\n\n");
-                response.append("I can assist you with:\n\n");
-                response.append("🔍 Car Search:\n");
-                response.append("• \"Show available SUVs\"\n");
-                response.append("• \"I need a car for 4 people\"\n");
-                response.append("• \"What luxury cars do you have?\"\n\n");
-                response.append("💡 Recommendations:\n");
-                response.append("• \"Recommend a good family car\"\n");
-                response.append("• \"Suggest economical options\"\n\n");
-                response.append("📅 Booking Help:\n");
-                response.append("• \"How do I book a car?\"\n");
-                response.append("• \"Help me with booking process\"\n\n");
-                response.append("Just ask me anything about cars, and I'll provide personalized results!");
+            } else {
+                response.append("ℹ️ AI services not available - using pattern matching\n\n");
+                return generateFallbackResponse(query, availableCars);
             }
 
             return response.toString();
 
         } catch (Exception e) {
-            return "❌ I apologize, but I'm having trouble accessing car information right now. Please try again later or contact support.";
+            return "❌ I apologize, but I'm having trouble accessing car information right now. Please try again later or contact support.\n\nError: " + e.getMessage();
         }
+    }
+
+    private String generateFallbackResponse(String query, List<Car> availableCars) {
+        StringBuilder response = new StringBuilder();
+        response.append("🔍 PATTERN-BASED CAR SEARCH\n");
+        response.append("============================\n\n");
+
+        String lowerQuery = query.toLowerCase();
+
+        // Handle availability queries
+        if (lowerQuery.contains("available") || lowerQuery.contains("show")) {
+            response.append("🚗 AVAILABLE CARS:\n\n");
+
+            if (lowerQuery.contains("suv")) {
+                response.append("SUV vehicles available:\n");
+                availableCars = availableCars.stream()
+                        .filter(car -> getCarType(car).equalsIgnoreCase("SUV"))
+                        .collect(java.util.stream.Collectors.toList());
+            } else if (lowerQuery.contains("luxury")) {
+                response.append("Luxury vehicles available:\n");
+                availableCars = availableCars.stream()
+                        .filter(car -> isLuxuryCar(car))
+                        .collect(java.util.stream.Collectors.toList());
+            } else {
+                response.append("All available vehicles:\n");
+            }
+
+            if (availableCars.isEmpty()) {
+                response.append("❌ No vehicles matching your criteria are currently available.\n");
+            } else {
+                response.append(String.format("Found %d vehicles:\n\n", availableCars.size()));
+
+                for (int i = 0; i < Math.min(5, availableCars.size()); i++) {
+                    Car car = availableCars.get(i);
+                    response.append(String.format("🚙 %s %s (%s)\n", car.getMake(), car.getModel(), car.getYear()));
+                    response.append(String.format("   Type: %s | Seats: %d | Price: ₹%.2f/day\n\n",
+                            getCarType(car), getSeatingCapacity(car), car.getPricePerDay()));
+                }
+
+                if (availableCars.size() > 5) {
+                    response.append(String.format("... and %d more vehicles available!\n", availableCars.size() - 5));
+                }
+            }
+        } // Handle passenger requirements
+        else if (lowerQuery.contains("people") || lowerQuery.contains("passengers")) {
+            int passengerCount = extractPassengerCount(lowerQuery);
+            response.append(String.format("🧑‍🤝‍🧑 CARS FOR %d PASSENGERS:\n\n", passengerCount));
+
+            availableCars = availableCars.stream()
+                    .filter(car -> getSeatingCapacity(car) >= passengerCount)
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (availableCars.isEmpty()) {
+                response.append("❌ No vehicles available for that many passengers.\n");
+            } else {
+                response.append(String.format("Found %d suitable vehicles:\n\n", availableCars.size()));
+
+                for (int i = 0; i < Math.min(4, availableCars.size()); i++) {
+                    Car car = availableCars.get(i);
+                    response.append(String.format("🚗 %s %s - %d seats (₹%.2f/day)\n",
+                            car.getMake(), car.getModel(), getSeatingCapacity(car), car.getPricePerDay()));
+                }
+            }
+        } // Handle recommendations
+        else if (lowerQuery.contains("recommend") || lowerQuery.contains("suggest") || lowerQuery.contains("best")) {
+            response.append("💡 PATTERN-BASED RECOMMENDATIONS:\n\n");
+
+            // Sort by value (features vs price)
+            availableCars = availableCars.stream()
+                    .sorted((a, b) -> {
+                        double valueA = getSeatingCapacity(a) * 100.0 / a.getPricePerDay().doubleValue();
+                        double valueB = getSeatingCapacity(b) * 100.0 / b.getPricePerDay().doubleValue();
+                        return Double.compare(valueB, valueA);
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+
+            response.append("Top recommendations based on value:\n\n");
+
+            for (int i = 0; i < Math.min(3, availableCars.size()); i++) {
+                Car car = availableCars.get(i);
+                response.append(String.format("🏆 #%d: %s %s\n", i + 1, car.getMake(), car.getModel()));
+                response.append(String.format("   Perfect for: %s\n", getRecommendationReason(car)));
+                response.append(String.format("   Price: ₹%.2f/day | Seats: %d\n\n", car.getPricePerDay(), getSeatingCapacity(car)));
+            }
+        } // Handle booking inquiries
+        else if (lowerQuery.contains("book") || lowerQuery.contains("rent") || lowerQuery.contains("reserve")) {
+            response.append("📅 BOOKING ASSISTANCE:\n\n");
+            response.append("I'd be happy to help you with booking! Here's how:\n\n");
+            response.append("1. Use the 'Search Cars' tab to browse available vehicles\n");
+            response.append("2. Select your preferred car\n");
+            response.append("3. Choose your rental dates\n");
+            response.append("4. Complete your booking\n\n");
+            response.append("💡 Need specific recommendations? Just ask me about car types or passenger requirements!");
+        } // General help
+        else {
+            response.append("🤖 HOW CAN I HELP?\n\n");
+            response.append("I can assist you with:\n\n");
+            response.append("🔍 Car Search:\n");
+            response.append("• \"Show available SUVs\"\n");
+            response.append("• \"I need a car for 4 people\"\n");
+            response.append("• \"What luxury cars do you have?\"\n\n");
+            response.append("💡 Recommendations:\n");
+            response.append("• \"Recommend a good family car\"\n");
+            response.append("• \"Suggest economical options\"\n\n");
+            response.append("📅 Booking Help:\n");
+            response.append("• \"How do I book a car?\"\n");
+            response.append("• \"Help me with booking process\"\n\n");
+            response.append("Note: AI services would provide enhanced understanding!\n");
+        }
+
+        return response.toString();
     }
 
     private void showHelpDialog() {

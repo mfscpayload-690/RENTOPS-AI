@@ -1,30 +1,48 @@
 package ui;
 
-import java.awt.*;
-import javax.swing.*;
-import ui.components.KeyboardShortcuts;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
+import javax.swing.BorderFactory;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import services.AuthService;
+// import ui.components.KeyboardShortcuts;
+// import utils.DatabaseSeeder;
 
 public class Main {
 
     public static void main(String[] args) {
         // Seed cars before launching UI (non-blocking safety)
+        /*
         try {
-            utils.DatabaseSeeder.seedCarsIfNeeded();
+            DatabaseSeeder.seedCarsIfNeeded();
         } catch (Exception e) {
             System.err.println("Startup seeding failed: " + e.getMessage());
         }
+         */
         SwingUtilities.invokeLater(() -> new RentopsAIMainFrame().setVisible(true));
     }
 }
 
 class RentopsAIMainFrame extends JFrame {
 
-    private services.AuthService authService;
+    private AuthService authService;
     private CardLayout cardLayout;
     private JPanel cardPanel;
 
     public RentopsAIMainFrame() {
-        this.authService = new services.AuthService();
+        this.authService = new AuthService();
 
         setTitle("Rentops-AI");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -71,15 +89,20 @@ class RentopsAIMainFrame extends JFrame {
         // Create login panel first; dashboards are created only after login/restore
         LoginPanel loginPanel = new LoginPanel(authService, () -> {
             // On successful login, instantiate the appropriate dashboard so it picks up current user
+            System.out.println("[DEBUG] Login success callback invoked. isAdmin=" + authService.isAdmin() + " user=" + (authService.getCurrentUser() != null ? authService.getCurrentUser().getUsername() : "null"));
             if (authService.isAdmin()) {
                 AdminDashboard adminDashboard = new AdminDashboard(authService, cardLayout, cardPanel);
                 cardPanel.add(adminDashboard, "admin");
                 cardLayout.show(cardPanel, "admin");
+                System.out.println("[DEBUG] Switched to admin dashboard");
             } else {
                 UserDashboard userDashboard = new UserDashboard(authService, cardLayout, cardPanel);
                 cardPanel.add(userDashboard, "user");
                 cardLayout.show(cardPanel, "user");
+                System.out.println("[DEBUG] Switched to user dashboard");
             }
+            cardPanel.revalidate();
+            cardPanel.repaint();
         });
 
         cardPanel.add(loginPanel, "login");
@@ -96,12 +119,11 @@ class RentopsAIMainFrame extends JFrame {
         }
 
         // Initialize keyboard shortcuts for the main frame
-        KeyboardShortcuts.initialize(getRootPane());
-
+        // KeyboardShortcuts.initialize(getRootPane());
         // Show a hint about keyboard shortcuts after a short delay
-        Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
-        hintTimer.setRepeats(false);
-        hintTimer.start();
+        // Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
+        // hintTimer.setRepeats(false);
+        // hintTimer.start();
     }
 
     private JMenuBar createMenuBar() {

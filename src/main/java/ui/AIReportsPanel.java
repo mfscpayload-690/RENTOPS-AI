@@ -22,6 +22,14 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
 
+import com.rentops.ai.config.AiComponents;
+import com.rentops.ai.intent.IntentExtractionService;
+import com.rentops.ai.summarize.ChunkSummarizerService;
+import com.rentops.ai.summarize.MergeSummarizerService;
+import com.rentops.ai.summarize.SummarizationPipeline;
+
+import utils.DatabaseConnection;
+
 /**
  * Clean and Modern AI Reports Panel for Admin Use Features: - Query Submission
  * to AI with real responses - Business Database Summarization - AI Metrics
@@ -35,6 +43,11 @@ public class AIReportsPanel extends JPanel {
     private JTextArea metricsArea;
     private JProgressBar progressBar;
 
+    // AI services
+    private AiComponents aiComponents;
+    private IntentExtractionService intentService;
+    private SummarizationPipeline summarizationService;
+
     // Modern color scheme
     private static final Color PRIMARY_COLOR = new Color(45, 52, 54);
     private static final Color ACCENT_COLOR = new Color(0, 123, 255);
@@ -44,7 +57,38 @@ public class AIReportsPanel extends JPanel {
     private static final Color CARD_COLOR = Color.WHITE;
 
     public AIReportsPanel() {
+        initializeAIServices();
         initializeUI();
+    }
+
+    private void initializeAIServices() {
+        try {
+            aiComponents = AiComponents.build(false);
+            if (aiComponents.config.isEnabled()) {
+                intentService = new IntentExtractionService(
+                        aiComponents.config,
+                        aiComponents.router,
+                        aiComponents.llm,
+                        aiComponents.safety
+                );
+
+                ChunkSummarizerService chunkSummarizer = new ChunkSummarizerService(
+                        aiComponents.llm,
+                        aiComponents.config.isEnabled()
+                );
+                MergeSummarizerService mergeSummarizer = new MergeSummarizerService(
+                        aiComponents.llm,
+                        aiComponents.config.isEnabled()
+                );
+                summarizationService = new SummarizationPipeline(
+                        2000, // target chunk size
+                        chunkSummarizer,
+                        mergeSummarizer
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to initialize AI services: " + e.getMessage());
+        }
     }
 
     private void initializeUI() {
@@ -306,43 +350,100 @@ public class AIReportsPanel extends JPanel {
     }
 
     private String generateAIResponse(String query) {
-        // Use actual AI intent extraction logic here
+        // Use real AI intent extraction and processing
         StringBuilder response = new StringBuilder();
-        response.append("AI QUERY ANALYSIS\n");
+        response.append("🤖 AI QUERY ANALYSIS\n");
         response.append("==================\n\n");
         response.append("Query: ").append(query).append("\n\n");
 
-        // Analyze query type
-        if (query.toLowerCase().contains("book") || query.toLowerCase().contains("rent")) {
-            response.append("Intent Detected: BOOKING_REQUEST\n");
-            response.append("Category: Car Rental\n");
-            response.append("Confidence: 95%\n\n");
-            response.append("Extracted Information:\n");
-            response.append("- Action: Book/Rent vehicle\n");
-            if (query.toLowerCase().contains("suv")) {
-                response.append("- Vehicle Type: SUV\n");
+        try {
+            if (aiComponents != null && aiComponents.config.isEnabled() && intentService != null) {
+                // Use real AI intent extraction
+                com.rentops.ai.intent.BookingIntent intent = intentService.extract(query);
+
+                response.append("AI Intent Analysis Results:\n");
+                response.append("---------------------------\n");
+                response.append("Action: ").append(intent.action()).append("\n");
+
+                if (intent.passengers() > 0) {
+                    response.append("Passengers: ").append(intent.passengers()).append("\n");
+                }
+
+                if (intent.vehicleType() != null && !intent.vehicleType().isBlank()) {
+                    response.append("Vehicle Type: ").append(intent.vehicleType()).append("\n");
+                }
+
+                if (intent.pickupLocation() != null && !intent.pickupLocation().isBlank()) {
+                    response.append("Pickup Location: ").append(intent.pickupLocation()).append("\n");
+                }
+
+                if (intent.dropoffLocation() != null && !intent.dropoffLocation().isBlank()) {
+                    response.append("Dropoff Location: ").append(intent.dropoffLocation()).append("\n");
+                }
+
+                response.append("AI Confidence: High (using Groq AI model)\n\n");
+
+                // Generate contextual recommendations based on AI analysis
+                response.append("AI-Generated Recommendations:\n");
+                response.append("-----------------------------\n");
+
+                switch (intent.action()) {
+                    case CREATE:
+                        response.append("• Processing booking request with extracted parameters\n");
+                        response.append("• Searching available vehicles matching criteria\n");
+                        if (intent.passengers() > 0) {
+                            response.append("• Filtering for vehicles with ").append(intent.passengers()).append("+ seats\n");
+                        }
+                        break;
+                    case CANCEL:
+                        response.append("• Booking cancellation request detected\n");
+                        response.append("• Please provide booking reference for cancellation\n");
+                        break;
+                    case MODIFY:
+                        response.append("• Booking modification request identified\n");
+                        response.append("• Please specify which booking details to update\n");
+                        break;
+                    case QUERY:
+                        response.append("• Status inquiry request processed\n");
+                        response.append("• Please provide booking details to check status\n");
+                        break;
+                    default:
+                        response.append("• General inquiry processed\n");
+                        response.append("• Use specific action words for better AI understanding\n");
+                        break;
+                }
+
+            } else {
+                // Fallback to heuristic analysis when AI is not available
+                response.append("Status: AI services unavailable - using heuristic analysis\n");
+                response.append("Intent Detection: Basic pattern matching\n\n");
+
+                if (query.toLowerCase().contains("book") || query.toLowerCase().contains("rent")) {
+                    response.append("Detected Intent: BOOKING_REQUEST\n");
+                    response.append("Confidence: 85% (heuristic)\n");
+                } else if (query.toLowerCase().contains("report") || query.toLowerCase().contains("analytics")) {
+                    response.append("Detected Intent: REPORT_REQUEST\n");
+                    response.append("Confidence: 80% (heuristic)\n");
+                } else {
+                    response.append("Detected Intent: GENERAL_INQUIRY\n");
+                    response.append("Confidence: 70% (heuristic)\n");
+                }
+
+                response.append("\nNote: Enable AI services for enhanced analysis with Groq models\n");
             }
-            if (query.toLowerCase().contains("sedan")) {
-                response.append("- Vehicle Type: Sedan\n");
+
+        } catch (Exception e) {
+            response.append("Error during AI processing: ").append(e.getMessage()).append("\n");
+            response.append("Falling back to basic analysis...\n\n");
+
+            // Basic fallback analysis
+            if (query.toLowerCase().contains("book")) {
+                response.append("Basic Intent: Booking request detected\n");
+            } else if (query.toLowerCase().contains("report")) {
+                response.append("Basic Intent: Report request detected\n");
+            } else {
+                response.append("Basic Intent: General inquiry\n");
             }
-            if (query.toLowerCase().contains("luxury")) {
-                response.append("- Category: Luxury\n");
-            }
-            response.append("\nRecommendation: Check available vehicles matching criteria");
-        } else if (query.toLowerCase().contains("report") || query.toLowerCase().contains("analytics")) {
-            response.append("Intent Detected: REPORT_REQUEST\n");
-            response.append("Category: Business Analytics\n");
-            response.append("Confidence: 90%\n\n");
-            response.append("Suggested Actions:\n");
-            response.append("- Generate business summary report\n");
-            response.append("- Analyze rental patterns\n");
-            response.append("- Review performance metrics\n");
-        } else {
-            response.append("Intent Detected: GENERAL_INQUIRY\n");
-            response.append("Category: Information Request\n");
-            response.append("Confidence: 80%\n\n");
-            response.append("Processing as general business query...\n");
-            response.append("Recommended: Use specific keywords for better results");
         }
 
         return response.toString();
@@ -375,84 +476,79 @@ public class AIReportsPanel extends JPanel {
     private String buildBusinessSummary() {
         StringBuilder summary = new StringBuilder();
 
-        try {
-            // Connect to database and fetch real data
-            Connection conn = java.sql.DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/rentops_ai?useSSL=false&serverTimezone=UTC",
-                    "root", "Aashish@123"
-            );
-
-            // Get car statistics
-            PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) as total_cars FROM cars");
-            ResultSet rs = stmt.executeQuery();
+        try (
+                Connection conn = DatabaseConnection.getConnection(); PreparedStatement psCars = conn.prepareStatement("SELECT COUNT(*) as total_cars FROM cars"); PreparedStatement psAvail = conn.prepareStatement("SELECT COUNT(*) as available FROM cars WHERE availability_status = 'Available'"); PreparedStatement psUsers = conn.prepareStatement("SELECT COUNT(*) as total_users FROM users WHERE role = 'user'"); PreparedStatement psBookings = conn.prepareStatement("SELECT COUNT(*) as total_bookings FROM bookings");) {
             int totalCars = 0;
-            if (rs.next()) {
-                totalCars = rs.getInt("total_cars");
-            }
-
-            // Get available cars
-            stmt = conn.prepareStatement("SELECT COUNT(*) as available FROM cars WHERE availability_status = 'Available'");
-            rs = stmt.executeQuery();
             int availableCars = 0;
-            if (rs.next()) {
-                availableCars = rs.getInt("available");
-            }
-
-            // Get users count
-            stmt = conn.prepareStatement("SELECT COUNT(*) as total_users FROM users WHERE role = 'user'");
-            rs = stmt.executeQuery();
             int totalUsers = 0;
-            if (rs.next()) {
-                totalUsers = rs.getInt("total_users");
-            }
-
-            // Get bookings count
-            stmt = conn.prepareStatement("SELECT COUNT(*) as total_bookings FROM bookings");
-            rs = stmt.executeQuery();
             int totalBookings = 0;
-            if (rs.next()) {
-                totalBookings = rs.getInt("total_bookings");
+
+            try (ResultSet rs = psCars.executeQuery()) {
+                if (rs.next()) {
+                    totalCars = rs.getInt("total_cars");
+                }
+            }
+            try (ResultSet rs = psAvail.executeQuery()) {
+                if (rs.next()) {
+                    availableCars = rs.getInt("available");
+                }
+            }
+            try (ResultSet rs = psUsers.executeQuery()) {
+                if (rs.next()) {
+                    totalUsers = rs.getInt("total_users");
+                }
+            }
+            try (ResultSet rs = psBookings.executeQuery()) {
+                if (rs.next()) {
+                    totalBookings = rs.getInt("total_bookings");
+                }
             }
 
-            conn.close();
+            // Build comprehensive raw data summary
+            StringBuilder rawData = new StringBuilder();
+            rawData.append("RENTOPS-AI Business Data Summary\n");
+            rawData.append("Fleet Management: ").append(totalCars).append(" total vehicles with ")
+                    .append(availableCars).append(" currently available for rental.\n");
+            rawData.append("Customer Base: ").append(totalUsers).append(" registered users have completed ")
+                    .append(totalBookings).append(" total bookings.\n");
+            rawData.append("Operational Status: Fleet utilization at ")
+                    .append(String.format("%.1f", totalCars > 0 ? ((totalCars - availableCars) * 100.0 / totalCars) : 0))
+                    .append("% with strong customer engagement patterns.\n");
+            rawData.append("Business Metrics: Average booking ratio of ")
+                    .append(String.format("%.1f", totalUsers > 0 ? (totalBookings * 1.0 / totalUsers) : 0))
+                    .append(" bookings per customer indicates healthy repeat business.\n");
+            rawData.append("Current availability suggests good inventory management and capacity for growth.");
 
-            // Build comprehensive summary
-            summary.append("RENTOPS-AI BUSINESS INTELLIGENCE REPORT\n");
-            summary.append("=====================================\n\n");
-            summary.append("FLEET OVERVIEW\n");
-            summary.append("-------------\n");
-            summary.append(String.format("Total Fleet Size: %d vehicles\n", totalCars));
-            summary.append(String.format("Available Vehicles: %d (%.1f%%)\n", availableCars,
-                    totalCars > 0 ? (availableCars * 100.0 / totalCars) : 0));
-            summary.append(String.format("Currently Rented: %d vehicles\n\n", totalCars - availableCars));
+            // Use AI summarization if available
+            if (aiComponents != null && aiComponents.config.isEnabled() && summarizationService != null) {
+                summary.append("🤖 AI-GENERATED BUSINESS INTELLIGENCE REPORT\n");
+                summary.append("============================================\n\n");
 
-            summary.append("CUSTOMER BASE\n");
-            summary.append("------------\n");
-            summary.append(String.format("Registered Users: %d customers\n", totalUsers));
-            summary.append(String.format("Total Bookings: %d reservations\n\n", totalBookings));
+                try {
+                    SummarizationPipeline.Result result = summarizationService.summarize(rawData.toString());
 
-            summary.append("OPERATIONAL INSIGHTS\n");
-            summary.append("------------------\n");
-            summary.append(String.format("Fleet Utilization: %.1f%%\n",
-                    totalCars > 0 ? ((totalCars - availableCars) * 100.0 / totalCars) : 0));
-            summary.append(String.format("Average Bookings per Customer: %.1f\n",
-                    totalUsers > 0 ? (totalBookings * 1.0 / totalUsers) : 0));
+                    summary.append("AI Summary:\n");
+                    summary.append("-----------\n");
+                    summary.append(result.summary()).append("\n\n");
 
-            summary.append("\nBUSINESS PERFORMANCE\n");
-            summary.append("------------------\n");
-            summary.append("• Strong fleet availability indicates good inventory management\n");
-            summary.append("• Customer engagement shows healthy booking activity\n");
-            summary.append("• Fleet size provides good capacity for business growth\n");
+                    summary.append("AI Analysis Details:\n");
+                    summary.append("-------------------\n");
+                    summary.append("• Processing Time: ").append(result.elapsedMs()).append("ms\n");
+                    summary.append("• Text Chunks Analyzed: ").append(result.chunkCount()).append("\n");
+                    summary.append("• Average Chunk Length: ").append(String.format("%.0f", result.avgChunkLength())).append(" characters\n");
+                    summary.append("• AI Model: Advanced Groq summarization pipeline\n\n");
 
-            summary.append("\nAI-POWERED RECOMMENDATIONS\n");
-            summary.append("------------------------\n");
-            if (availableCars > totalCars * 0.8) {
-                summary.append("• High availability suggests potential for marketing campaigns\n");
+                } catch (Exception e) {
+                    summary.append("AI summarization encountered an issue: ").append(e.getMessage()).append("\n");
+                    summary.append("Falling back to structured data summary...\n\n");
+                    summary.append(generateFallbackSummary(totalCars, availableCars, totalUsers, totalBookings));
+                }
+            } else {
+                summary.append("RENTOPS-AI BUSINESS INTELLIGENCE REPORT\n");
+                summary.append("=====================================\n\n");
+                summary.append("Note: AI summarization not available - showing structured data summary\n\n");
+                summary.append(generateFallbackSummary(totalCars, availableCars, totalUsers, totalBookings));
             }
-            if (totalBookings > totalUsers * 0.5) {
-                summary.append("• Strong repeat customer behavior - focus on loyalty programs\n");
-            }
-            summary.append("• Consider demand forecasting for optimal fleet management\n");
 
             summary.append(String.format("\nReport Generated: %s\n",
                     java.time.LocalDateTime.now().format(
@@ -464,6 +560,47 @@ public class AIReportsPanel extends JPanel {
         }
 
         return summary.toString();
+    }
+
+    private String generateFallbackSummary(int totalCars, int availableCars, int totalUsers, int totalBookings) {
+        StringBuilder fallback = new StringBuilder();
+
+        fallback.append("FLEET OVERVIEW\n");
+        fallback.append("-------------\n");
+        fallback.append(String.format("Total Fleet Size: %d vehicles\n", totalCars));
+        fallback.append(String.format("Available Vehicles: %d (%.1f%%)\n", availableCars,
+                totalCars > 0 ? (availableCars * 100.0 / totalCars) : 0));
+        fallback.append(String.format("Currently Rented: %d vehicles\n\n", totalCars - availableCars));
+
+        fallback.append("CUSTOMER BASE\n");
+        fallback.append("------------\n");
+        fallback.append(String.format("Registered Users: %d customers\n", totalUsers));
+        fallback.append(String.format("Total Bookings: %d reservations\n\n", totalBookings));
+
+        fallback.append("OPERATIONAL INSIGHTS\n");
+        fallback.append("------------------\n");
+        fallback.append(String.format("Fleet Utilization: %.1f%%\n",
+                totalCars > 0 ? ((totalCars - availableCars) * 100.0 / totalCars) : 0));
+        fallback.append(String.format("Average Bookings per Customer: %.1f\n",
+                totalUsers > 0 ? (totalBookings * 1.0 / totalUsers) : 0));
+
+        fallback.append("\nBUSINESS PERFORMANCE\n");
+        fallback.append("------------------\n");
+        fallback.append("• Strong fleet availability indicates good inventory management\n");
+        fallback.append("• Customer engagement shows healthy booking activity\n");
+        fallback.append("• Fleet size provides good capacity for business growth\n");
+
+        fallback.append("\nRECOMMENDATIONS\n");
+        fallback.append("-------------\n");
+        if (availableCars > totalCars * 0.8) {
+            fallback.append("• High availability suggests potential for marketing campaigns\n");
+        }
+        if (totalBookings > totalUsers * 0.5) {
+            fallback.append("• Strong repeat customer behavior - focus on loyalty programs\n");
+        }
+        fallback.append("• Consider demand forecasting for optimal fleet management\n");
+
+        return fallback.toString();
     }
 
     private void refreshAIMetrics() {

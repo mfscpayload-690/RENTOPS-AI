@@ -5,6 +5,13 @@
         "type": "java",
         "name": "Main",
         "request": "launch",
+        "mainClass": "ui.Main",
+        "projectName": "rentops-ai"
+    },
+    {
+        "type": "java",
+        "name": "Main",
+        "request": "launch",
         "mainClass": "Main",
         "projectName": "rentops-ai"
     },
