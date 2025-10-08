@@ -43,3 +43,8 @@ build/
 
 # Exceptions for specific JAR files that should be versioned
 !mysql-connector-j-9.4.0.jar
+
+# Env file
+*.env
+
+# .gitignore 

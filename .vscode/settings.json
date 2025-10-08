@@ -1,11 +1,11 @@
-{
+
+.{
     "java.home": "D:\\Windows OS C softwares\\JAVA JDK",
     "java.configuration.detectJdksAtStart": false,
     "java.compile.nullAnalysis.mode": "disabled",
     "java.eclipse.downloadSources": true,
-    "java.configuration.checkProjectSettingsExclusions": false,
+    "java.import.generatesMetadataFilesAtProjectRoot": false,
     "java.project.sourcePaths": [
-        ".",
         "dao",
         "models", 
         "services",
@@ -16,5 +16,12 @@
         "lib/**/*.jar",
         "mysql-connector-j-9.4.0.jar"
     ],
-    "java.project.outputPath": "bin"
+    "java.project.outputPath": "bin",
+    "java.clean.workspace": false,
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-11",
+            "path": "D:\\Windows OS C softwares\\JAVA JDK"
+        }
+    ]
 }
