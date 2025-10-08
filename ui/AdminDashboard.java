@@ -875,47 +875,8 @@ public class AdminDashboard extends JPanel {
     }
 
     private JPanel createReportsPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 247, 250));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(20, 20, 20, 20);
-
-        JLabel title = new JLabel("Reports & Analytics");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(52, 73, 94));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        panel.add(title, gbc);
-
-        JLabel subtitle = new JLabel("Future AI/NLP analytics integration point");
-        subtitle.setFont(new Font("Segoe UI", Font.ITALIC, 16));
-        subtitle.setForeground(new Color(127, 140, 141));
-        gbc.gridy++;
-        panel.add(subtitle, gbc);
-
-        // Report buttons
-        gbc.gridy++;
-        JButton monthlyReport = new JButton("Monthly Revenue Report");
-        monthlyReport.setBackground(new Color(52, 152, 219));
-        monthlyReport.setForeground(Color.WHITE);
-        monthlyReport.setFocusPainted(false);
-        panel.add(monthlyReport, gbc);
-
-        gbc.gridy++;
-        JButton carUtilization = new JButton("Car Utilization Report");
-        carUtilization.setBackground(new Color(46, 204, 113));
-        carUtilization.setForeground(Color.WHITE);
-        carUtilization.setFocusPainted(false);
-        panel.add(carUtilization, gbc);
-
-        gbc.gridy++;
-        JButton userActivity = new JButton("User Activity Report");
-        userActivity.setBackground(new Color(155, 89, 182));
-        userActivity.setForeground(Color.WHITE);
-        userActivity.setFocusPainted(false);
-        panel.add(userActivity, gbc);
-
-        return panel;
+        // Return the new AI-powered reports panel
+        return new AIReportsPanel();
     }
 
     private void showLogoutDialog() {
