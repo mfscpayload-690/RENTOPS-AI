@@ -28,6 +28,7 @@ public class LoggingLlmClient implements LlmClient {
         return chatWithTask(AiTask.INTENT, request); // default fallback
     }
 
+    @Override
     public LlmResponse chatWithTask(AiTask task, LlmRequest request) throws AiException {
         long start = System.currentTimeMillis();
         boolean success = false;

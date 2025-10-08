@@ -149,3 +149,32 @@ If you see driver or connection errors:
 
 ## License
 MIT — see LICENSE
+
+---
+
+## AI Features (In Progress)
+
+Implemented slices:
+1. Intent Extraction (heuristic + optional LLM)
+2. Logging & Metrics (per task/model; persisted to `ai_query_log` if enabled)
+3. Summarization Pipeline (sentence split → chunk → per-chunk summary → merged summary)
+
+### Summarization Components (`com.rentops.ai.summarize`)
+- `SentenceSplitter` – naive regex-based splitter.
+- `Chunker` – groups sentences into size-bounded chunks (target char size, preserves sentence boundaries).
+- `ChunkSummarizerService` – heuristic (first sentence + key capitalized tokens & numbers) or LLM (task `CHUNK_SUMMARY`).
+- `MergeSummarizerService` – heuristic (top distinct sentences) or LLM (task `MERGE_SUMMARY`).
+- `SummarizationPipeline` – orchestrates and returns final summary plus metadata (chunk count, average chunk length, elapsed ms, individual chunk summaries).
+
+Heuristic mode is used when AI is disabled or an LLM error occurs (graceful fallback).
+
+Example (conceptual):
+```java
+var chunkSummarizer = new ChunkSummarizerService(loggingClient, aiEnabled);
+var mergeSummarizer = new MergeSummarizerService(loggingClient, aiEnabled);
+var pipeline = new SummarizationPipeline(800, chunkSummarizer, mergeSummarizer);
+var result = pipeline.summarize(longReportText);
+System.out.println(result.summary());
+```
+
+Metrics & Logging: When using a `LoggingLlmClient`, tasks `CHUNK_SUMMARY` and `MERGE_SUMMARY` appear in in-memory metrics and (if enabled) DB logs.
