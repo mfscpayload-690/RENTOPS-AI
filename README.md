@@ -62,6 +62,7 @@ Key tables:
 - cars (includes total_km_driven INT NOT NULL DEFAULT 0)
 - bookings
 - user_sessions (for persistent login)
+- ai_query_log (optional AI metrics/logging table)
 
 Included SQL scripts:
 - db_setup.sql – create schema and core tables (cars includes total_km_driven)
@@ -97,6 +98,27 @@ db.user=<your_user>
 db.password=<your_password>
 ```
 Please do not commit real credentials.
+
+### AI Logging Table (Optional)
+If you enable AI logging (`AI_LOG_DB_ENABLE=true` and provide an API key), create this table:
+
+```sql
+CREATE TABLE ai_query_log (
+	id BIGINT AUTO_INCREMENT PRIMARY KEY,
+	task VARCHAR(40),
+	model VARCHAR(80),
+	prompt_hash CHAR(64),
+	prompt_chars INT,
+	response_chars INT,
+	latency_ms BIGINT,
+	success TINYINT(1),
+	error_type VARCHAR(120),
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_ai_query_log_task ON ai_query_log(task);
+CREATE INDEX idx_ai_query_log_model ON ai_query_log(model);
+```
+
 
 ---
 

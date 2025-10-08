@@ -12,7 +12,6 @@ import com.rentops.ai.safety.SafetyService;
 import com.rentops.ai.util.JsonCleaningUtil;
 import com.rentops.ai.util.Redactor;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Optional;
@@ -77,7 +76,7 @@ public class IntentExtractionService {
             return heuristic; // do not escalate if flagged
         }
 
-        String model = router.route(AiTask.INTENT, new ContextStats(raw.length(), 1, 0, false));
+        String model = router.pickModel(AiTask.INTENT, new ContextStats(raw.length(), 1, 0, false), 0, false);
         String prompt = buildJsonPrompt(redacted);
         try {
             var request = new LlmClient.LlmRequest(model, "You are an intent extraction assistant.", prompt, 0.2);
@@ -113,25 +112,26 @@ public class IntentExtractionService {
         if (json == null) {
             return null;
         }
+        JsonNode node;
         try {
-            JsonNode node = mapper.readTree(json);
-            BookingAction action = heuristic.action();
-            if (node.hasNonNull("action")) {
-                try {
-                    action = BookingAction.valueOf(node.get("action").asText().toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException ignored) {
-                }
-            }
-            String pickup = pick(node, "pickupLocation", heuristic.pickupLocation());
-            String drop = pick(node, "dropoffLocation", heuristic.dropoffLocation());
-            LocalDate pDate = date(node, "pickupDate", heuristic.pickupDate());
-            LocalDate dDate = date(node, "dropoffDate", heuristic.dropoffDate());
-            Integer pax = integer(node, "passengers", heuristic.passengers());
-            String vehicle = pick(node, "vehicleType", heuristic.vehicleType());
-            return new BookingIntent(action, pickup, drop, pDate, dDate, pax, vehicle, raw, true);
-        } catch (IOException e) {
+            node = mapper.readTree(json);
+        } catch (Exception ex) {
             return null;
         }
+        BookingAction action = heuristic.action();
+        if (node.hasNonNull("action")) {
+            try {
+                action = BookingAction.valueOf(node.get("action").asText().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        String pickup = pick(node, "pickupLocation", heuristic.pickupLocation());
+        String drop = pick(node, "dropoffLocation", heuristic.dropoffLocation());
+        LocalDate pDate = date(node, "pickupDate", heuristic.pickupDate());
+        LocalDate dDate = date(node, "dropoffDate", heuristic.dropoffDate());
+        Integer pax = integer(node, "passengers", heuristic.passengers());
+        String vehicle = pick(node, "vehicleType", heuristic.vehicleType());
+        return new BookingIntent(action, pickup, drop, pDate, dDate, pax, vehicle, raw, true);
     }
 
     private String pick(JsonNode n, String field, String fallback) {
@@ -178,7 +178,7 @@ public class IntentExtractionService {
         if (m.find()) {
             try {
                 return Integer.parseInt(m.group(2));
-            } catch (NumberFormatException ignored) {
+            } catch (Exception ignored) {
             }
         }
         return null;
