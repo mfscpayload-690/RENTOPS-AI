@@ -77,3 +77,6 @@ gradle-app.setting
 *.env
 
 # .gitignore 
+clean_bin/icons/Admin.png
+.gitignore
+clean_bin/icons/User.png

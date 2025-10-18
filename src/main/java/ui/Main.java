@@ -15,22 +15,21 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import services.AuthService;
-// import ui.components.KeyboardShortcuts;
-// import utils.DatabaseSeeder;
+import ui.components.KeyboardShortcuts;
+import utils.DatabaseSeeder;
 
 public class Main {
 
     public static void main(String[] args) {
         // Seed cars before launching UI (non-blocking safety)
-        /*
         try {
             DatabaseSeeder.seedCarsIfNeeded();
         } catch (Exception e) {
             System.err.println("Startup seeding failed: " + e.getMessage());
         }
-         */
         SwingUtilities.invokeLater(() -> new RentopsAIMainFrame().setVisible(true));
     }
 }
@@ -119,11 +118,11 @@ class RentopsAIMainFrame extends JFrame {
         }
 
         // Initialize keyboard shortcuts for the main frame
-        // KeyboardShortcuts.initialize(getRootPane());
+        KeyboardShortcuts.initialize(getRootPane());
         // Show a hint about keyboard shortcuts after a short delay
-        // Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
-        // hintTimer.setRepeats(false);
-        // hintTimer.start();
+        Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
+        hintTimer.setRepeats(false);
+        hintTimer.start();
     }
 
     private JMenuBar createMenuBar() {
