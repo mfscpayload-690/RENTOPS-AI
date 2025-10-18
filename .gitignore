@@ -1,8 +1,20 @@
 # Compiled class files
 *.class
 
+# Java class files and build output
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
 # IntelliJ IDEA files
 .idea/
+*.iml
+*.iws
+*.ipr
 
 # Eclipse files
 .classpath
@@ -16,32 +28,49 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# NetBeans files
+nbproject/
+nbbuild/
+dist/
+nbdist/
+
 # Bin directory (compiled output)
 bin/
+out/
 
 # Logs
 *.log
+*.log.*
 
 # Package files
-*.jar
 *.war
 *.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
 
 # virtual machine crash logs
 hs_err_pid*
+replay_pid*
 
 # Maven
 target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
 # Gradle
 .gradle/
 build/
+gradle-app.setting
+!gradle-wrapper.jar
 
-# Exceptions for specific JAR files that should be versioned
+# Exceptions for specific JAR files that should be versioned (in lib folder)
+!lib/*.jar
 !mysql-connector-j-9.4.0.jar
 
 # Env file
