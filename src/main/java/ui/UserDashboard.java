@@ -5,14 +5,15 @@ import dao.BookingDAO;
 import models.Car;
 import models.Booking;
 import services.AuthService;
-import ui.components.CarDetailsDialog;
-import ui.components.KeyboardShortcuts;
-import ui.components.Toast;
+import ui.components.*;
+import utils.ModernTheme;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.image.BufferedImage;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.List;
 import java.util.List;
 
 public class UserDashboard extends JPanel {
@@ -198,194 +199,277 @@ public class UserDashboard extends JPanel {
     }
 
     private JPanel createWelcomePanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 247, 250));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(ModernTheme.BG_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE));
+
+        // Header section
+        JPanel headerPanel = ModernTheme.createHeaderPanel("Welcome to Rentops-AI", "Your smart car rental solution");
+        panel.add(headerPanel, BorderLayout.NORTH);
+
+        // Main content with stats
+        JPanel contentPanel = new JPanel(new GridBagLayout());
+        contentPanel.setBackground(ModernTheme.BG_DARK);
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(20, 20, 20, 20);
+        gbc.insets = new Insets(15, 15, 15, 15);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
 
-        JLabel title = new JLabel("Welcome to Rentops-AI");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
-        title.setForeground(new Color(41, 128, 185));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        panel.add(title, gbc);
+        // Create stats cards
+        StatCard myBookingsCard = new StatCard("My Active Bookings", "0", ModernTheme.ACCENT_BLUE);
+        StatCard availableCarsCard = new StatCard("Available Cars", "0", ModernTheme.SUCCESS_GREEN);
+        StatCard totalSpentCard = new StatCard("Total Spent", "₹0", ModernTheme.ACCENT_ORANGE);
+        StatCard carsRentedCard = new StatCard("Cars Rented", "0", ModernTheme.WARNING_YELLOW);
 
-        JLabel subtitle = new JLabel("Your smart car rental solution");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        subtitle.setForeground(new Color(127, 140, 141));
-        gbc.gridy++;
-        panel.add(subtitle, gbc);
+        // Layout stats in 2x2 grid
+        gbc.gridx = 0; gbc.gridy = 0;
+        contentPanel.add(myBookingsCard, gbc);
 
-        // Quick action buttons
-        gbc.gridy++;
-        gbc.insets = new Insets(40, 20, 20, 20);
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.setBackground(new Color(245, 247, 250));
+        gbc.gridx = 1;
+        contentPanel.add(availableCarsCard, gbc);
 
-        JButton searchButton = new JButton("Search Available Cars");
-        searchButton.setBackground(new Color(46, 204, 113));
-        searchButton.setForeground(Color.WHITE);
-        searchButton.setFocusPainted(false);
-        searchButton.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        searchButton.setPreferredSize(new Dimension(200, 50));
+        gbc.gridx = 0; gbc.gridy = 1;
+        contentPanel.add(totalSpentCard, gbc);
+
+        gbc.gridx = 1;
+        contentPanel.add(carsRentedCard, gbc);
+
+        panel.add(contentPanel, BorderLayout.CENTER);
+
+        // Quick action buttons at bottom
+        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        actionsPanel.setBackground(ModernTheme.BG_DARK);
+
+        ActionButton searchButton = new ActionButton("Search Available Cars", ActionButton.Type.SUCCESS);
+        searchButton.setPreferredSize(new Dimension(220, 50));
         searchButton.addActionListener(e -> cardLayout.show(contentPanel, "search"));
 
-        JButton bookingsButton = new JButton("View My Bookings");
-        bookingsButton.setBackground(new Color(52, 152, 219));
-        bookingsButton.setForeground(Color.WHITE);
-        bookingsButton.setFocusPainted(false);
-        bookingsButton.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        bookingsButton.setPreferredSize(new Dimension(200, 50));
+        ActionButton bookingsButton = new ActionButton("View My Bookings", ActionButton.Type.PRIMARY);
+        bookingsButton.setPreferredSize(new Dimension(220, 50));
         bookingsButton.addActionListener(e -> cardLayout.show(contentPanel, "bookings"));
 
-        buttonPanel.add(searchButton);
-        buttonPanel.add(Box.createHorizontalStrut(20));
-        buttonPanel.add(bookingsButton);
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        buttonRow.setBackground(ModernTheme.BG_DARK);
+        buttonRow.add(searchButton);
+        buttonRow.add(bookingsButton);
 
-        panel.add(buttonPanel, gbc);
+        // Keyboard shortcut info
+        JLabel shortcutInfo = new JLabel("Press Ctrl+H to view keyboard shortcuts");
+        shortcutInfo.setFont(ModernTheme.FONT_REGULAR);
+        shortcutInfo.setForeground(ModernTheme.TEXT_SECONDARY);
+
+        actionsPanel.setLayout(new BoxLayout(actionsPanel, BoxLayout.Y_AXIS));
+        buttonRow.setAlignmentX(Component.CENTER_ALIGNMENT);
+        shortcutInfo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        actionsPanel.add(Box.createVerticalStrut(10));
+        actionsPanel.add(buttonRow);
+        actionsPanel.add(Box.createVerticalStrut(20));
+        actionsPanel.add(shortcutInfo);
+
+        panel.add(actionsPanel, BorderLayout.SOUTH);
+
+        // Load stats asynchronously
+        loadUserStats(myBookingsCard, availableCarsCard, totalSpentCard, carsRentedCard);
 
         return panel;
     }
 
+    private void loadUserStats(StatCard bookingsCard, StatCard availableCarsCard, StatCard spentCard, StatCard rentedCard) {
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            private int activeBookings = 0;
+            private int availableCars = 0;
+            private double totalSpent = 0.0;
+            private int carsRented = 0;
+
+            @Override
+            protected Void doInBackground() throws Exception {
+                // Get user's active bookings
+                if (authService != null && authService.getCurrentUser() != null) {
+                    int userId = authService.getCurrentUser().getId();
+                    List<Booking> userBookings = bookingDAO.getBookingsByUserId(userId);
+                    activeBookings = (int) userBookings.stream()
+                        .filter(b -> "pending".equalsIgnoreCase(b.getStatus()) || "active".equalsIgnoreCase(b.getStatus()))
+                        .count();
+                    carsRented = userBookings.size();
+                    totalSpent = userBookings.stream()
+                        .map(Booking::getTotalPrice)
+                        .filter(price -> price != null)
+                        .mapToDouble(price -> price.doubleValue())
+                        .sum();
+                }
+                // Get available cars count
+                List<Car> cars = carDAO.getAvailableCars();
+                availableCars = cars.size();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                bookingsCard.updateValue(String.valueOf(activeBookings), "");
+                availableCarsCard.updateValue(String.valueOf(availableCars), "");
+                spentCard.updateValue("₹" + String.format("%,.2f", totalSpent), "");
+                rentedCard.updateValue(String.valueOf(carsRented), "");
+            }
+        };
+        worker.execute();
+    }
+
     private JPanel createSearchCarsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245, 247, 250));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(ModernTheme.BG_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE));
 
-        JLabel title = new JLabel("Available Cars");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(41, 128, 185));
-        panel.add(title, BorderLayout.NORTH);
+        // Header section
+        JPanel headerPanel = ModernTheme.createHeaderPanel("Available Cars", "Browse and rent cars from our fleet");
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Search panel
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.setBackground(new Color(245, 247, 250));
-        searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        // Main content panel
+        JPanel contentPanel = new JPanel(new BorderLayout(0, ModernTheme.PADDING_MEDIUM));
+        contentPanel.setBackground(ModernTheme.BG_DARK);
 
-        JLabel searchLabel = new JLabel("Search:");
-        JTextField searchField = new JTextField(20);
-        JButton searchButton = new JButton("Search");
-        searchButton.setBackground(new Color(52, 152, 219));
-        searchButton.setForeground(Color.WHITE);
-        searchButton.setFocusPainted(false);
+        // Toolbar with search and actions
+        JPanel toolbar = ModernTheme.createToolbar();
+        
+        JPanel searchBar = ModernTheme.createSearchBar("Search by make, model, or year...");
+        searchBar.setPreferredSize(new Dimension(400, ModernTheme.INPUT_HEIGHT));
+        toolbar.add(searchBar);
+        
+        toolbar.add(Box.createHorizontalStrut(15));
+        
+        ActionButton refreshButton = new ActionButton("Refresh", ActionButton.Type.SECONDARY);
+        refreshButton.setPreferredSize(new Dimension(120, 40));
+        toolbar.add(refreshButton);
 
-        searchPanel.add(searchLabel);
-        searchPanel.add(searchField);
-        searchPanel.add(searchButton);
-        panel.add(searchPanel, BorderLayout.NORTH);
+        contentPanel.add(toolbar, BorderLayout.NORTH);
 
-        // Cars table
+        // Modern table
         String[] columnNames = {"ID", "Code", "Make", "Model", "Year", "Total KM Driven", "Price/Day", "Status", "Specs"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setRowHeight(25);
-        table.getTableHeader().setBackground(new Color(41, 128, 185));
-        table.getTableHeader().setForeground(Color.WHITE);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        ModernTable modernTable = new ModernTable(columnNames, false);
+        DefaultTableModel tableModel = modernTable.getModel();
+        JTable table = modernTable.getTable();
         table.removeColumn(table.getColumnModel().getColumn(0)); // hide ID
-
+        
         JScrollPane scrollPane = new JScrollPane(table);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setBorder(BorderFactory.createLineBorder(ModernTheme.BORDER_COLOR, 1));
+        scrollPane.getViewport().setBackground(ModernTheme.BG_DARK);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Bottom panel with action buttons
-        JPanel bottomPanel = new JPanel(new FlowLayout());
-        bottomPanel.setBackground(new Color(245, 247, 250));
+        // Bottom action panel
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, ModernTheme.PADDING_MEDIUM));
+        actionPanel.setBackground(ModernTheme.BG_DARK);
 
-        JButton viewDetailsButton = new JButton("View Car Details");
-        viewDetailsButton.setBackground(new Color(41, 128, 185));
-        viewDetailsButton.setForeground(Color.WHITE);
-        viewDetailsButton.setFocusPainted(false);
-        viewDetailsButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        ActionButton viewDetailsButton = new ActionButton("View Details", ActionButton.Type.SECONDARY);
+        viewDetailsButton.setPreferredSize(new Dimension(150, 45));
 
+        ActionButton rentButton = new ActionButton("Rent Selected Car", ActionButton.Type.SUCCESS);
+        rentButton.setPreferredSize(new Dimension(180, 45));
+
+        actionPanel.add(viewDetailsButton);
+        actionPanel.add(rentButton);
+
+        contentPanel.add(actionPanel, BorderLayout.SOUTH);
+        panel.add(contentPanel, BorderLayout.CENTER);
+
+        // View Details button action
         viewDetailsButton.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow >= 0) {
                 int modelRow = table.convertRowIndexToModel(selectedRow);
-                int carId = (int) model.getValueAt(modelRow, 0);
+                int carId = (int) tableModel.getValueAt(modelRow, 0);
                 try {
                     Car car = carDAO.getById(carId);
                     if (car != null) {
                         new CarDetailsDialog(this, car).setVisible(true);
                     } else {
-                        JOptionPane.showMessageDialog(this, "Car details not found", "Error", JOptionPane.ERROR_MESSAGE);
+                        Toast.error(this, "Car details not found");
                     }
                 } catch (Exception ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(this, "Error loading car details: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    Toast.error(this, "Error loading car details: " + ex.getMessage());
                 }
             } else {
-                JOptionPane.showMessageDialog(this, "Please select a car first.");
+                Toast.info(this, "Please select a car first");
             }
         });
 
-        JButton rentButton = new JButton("Rent Selected Car");
-        rentButton.setBackground(new Color(46, 204, 113));
-        rentButton.setForeground(Color.WHITE);
-        rentButton.setFocusPainted(false);
-        rentButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-
+        // Rent button action
         rentButton.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow >= 0) {
                 int modelRow = table.convertRowIndexToModel(selectedRow);
-                int carId = (int) model.getValueAt(modelRow, 0);
+                int carId = (int) tableModel.getValueAt(modelRow, 0);
 
                 JPanel input = new JPanel(new GridLayout(0, 2, 8, 8));
+                input.setBackground(ModernTheme.BG_CARD);
                 JSpinner startPicker = new JSpinner(new SpinnerDateModel());
                 JSpinner endPicker = new JSpinner(new SpinnerDateModel());
                 startPicker.setEditor(new JSpinner.DateEditor(startPicker, "yyyy-MM-dd"));
                 endPicker.setEditor(new JSpinner.DateEditor(endPicker, "yyyy-MM-dd"));
-                input.add(new JLabel("Start Date:"));
+                
+                JLabel startLabel = new JLabel("Start Date:");
+                startLabel.setForeground(ModernTheme.TEXT_PRIMARY);
+                JLabel endLabel = new JLabel("End Date:");
+                endLabel.setForeground(ModernTheme.TEXT_PRIMARY);
+                
+                input.add(startLabel);
                 input.add(startPicker);
-                input.add(new JLabel("End Date:"));
+                input.add(endLabel);
                 input.add(endPicker);
-                int res = JOptionPane.showConfirmDialog(this, input, "Create Booking", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                
+                int res = JOptionPane.showConfirmDialog(this, input, "Create Booking", 
+                                                         JOptionPane.OK_CANCEL_OPTION, 
+                                                         JOptionPane.PLAIN_MESSAGE);
                 if (res == JOptionPane.OK_OPTION) {
                     java.util.Date sd = (java.util.Date) startPicker.getValue();
                     java.util.Date ed = (java.util.Date) endPicker.getValue();
                     java.time.LocalDate start = sd.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
                     java.time.LocalDate end = ed.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-                    // Validations: no past dates, end after start, max window 30 days
+                    
+                    // Validations
                     java.time.LocalDate today = java.time.LocalDate.now();
                     if (start.isBefore(today)) {
-                        Toast.error(this, "Start date cannot be in the past.");
+                        Toast.error(this, "Start date cannot be in the past");
                         return;
                     }
                     if (!end.isAfter(start)) {
-                        Toast.error(this, "End date must be after start date.");
+                        Toast.error(this, "End date must be after start date");
                         return;
                     }
                     long days = java.time.temporal.ChronoUnit.DAYS.between(start, end);
                     if (days > 30) {
-                        Toast.error(this, "Maximum rental period is 30 days.");
+                        Toast.error(this, "Maximum rental period is 30 days");
                         return;
                     }
                     if (authService == null || authService.getCurrentUser() == null) {
-                        JOptionPane.showMessageDialog(this, "You must be logged in to book.");
+                        Toast.error(this, "You must be logged in to book");
                         return;
                     }
+                    
                     int userId = authService.getCurrentUser().getId();
                     boolean ok = bookingService.createBooking(userId, carId, start, end);
                     if (ok) {
-                        Toast.success(this, "Booking created. Pending approval.");
-                        // reload tables
-                        loadAvailableCars(model);
+                        Toast.success(this, "Booking created. Pending approval");
+                        loadAvailableCars(tableModel);
                     } else {
-                        Toast.error(this, "Failed to create booking (car unavailable or invalid dates).");
+                        Toast.error(this, "Failed to create booking (car unavailable or invalid dates)");
                     }
                 }
             } else {
-                JOptionPane.showMessageDialog(this, "Please select a car to rent.");
+                Toast.info(this, "Please select a car to rent");
             }
         });
 
-        bottomPanel.add(viewDetailsButton);
-        bottomPanel.add(Box.createHorizontalStrut(10));
-        bottomPanel.add(rentButton);
-        panel.add(bottomPanel, BorderLayout.SOUTH);
+        // Refresh button action
+        refreshButton.addActionListener(e -> loadAvailableCars(tableModel));
 
-        // Add double-click listener for car details
+        // Double-click to view details
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -393,26 +477,38 @@ public class UserDashboard extends JPanel {
                     int selectedRow = table.getSelectedRow();
                     if (selectedRow >= 0) {
                         int modelRow = table.convertRowIndexToModel(selectedRow);
-                        int carId = (int) model.getValueAt(modelRow, 0);
+                        int carId = (int) tableModel.getValueAt(modelRow, 0);
                         try {
                             Car car = carDAO.getById(carId);
                             if (car != null) {
                                 new CarDetailsDialog(UserDashboard.this, car).setVisible(true);
                             }
                         } catch (Exception ex) {
-                            ex.printStackTrace();
-                            JOptionPane.showMessageDialog(UserDashboard.this,
-                                    "Error loading car details: " + ex.getMessage(),
-                                    "Error",
-                                    JOptionPane.ERROR_MESSAGE);
+                            Toast.error(UserDashboard.this, "Error loading car details");
                         }
                     }
                 }
             }
         });
 
+        // Search functionality
+        JTextField searchField = ModernTheme.getSearchField(searchBar);
+        searchField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                String query = searchField.getText().toLowerCase().trim();
+                TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+                table.setRowSorter(sorter);
+                if (query.isEmpty()) {
+                    sorter.setRowFilter(null);
+                } else {
+                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query));
+                }
+            }
+        });
+
         // Load available cars
-        loadAvailableCars(model);
+        loadAvailableCars(tableModel);
 
         return panel;
     }
@@ -454,65 +550,80 @@ public class UserDashboard extends JPanel {
 
     private JPanel createMyBookingsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245, 247, 250));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(ModernTheme.BG_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE));
 
-        JLabel title = new JLabel("My Bookings");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(41, 128, 185));
-        panel.add(title, BorderLayout.NORTH);
+        // Header section
+        JPanel headerPanel = ModernTheme.createHeaderPanel("My Bookings", "Track and manage your car rentals");
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Bookings table
+        // Main content
+        JPanel contentPanel = new JPanel(new BorderLayout(0, ModernTheme.PADDING_MEDIUM));
+        contentPanel.setBackground(ModernTheme.BG_DARK);
+
+        // Toolbar
+        JPanel toolbar = ModernTheme.createToolbar();
+        
+        ActionButton refreshButton = new ActionButton("Refresh", ActionButton.Type.SECONDARY);
+        refreshButton.setPreferredSize(new Dimension(120, 40));
+        toolbar.add(refreshButton);
+
+        contentPanel.add(toolbar, BorderLayout.NORTH);
+
+        // Modern table
         String[] columnNames = {"Booking ID", "Car", "Start Date", "End Date", "Status", "Total Price"};
-        DefaultTableModel bookingsModel = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(bookingsModel);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setRowHeight(25);
-        table.getTableHeader().setBackground(new Color(41, 128, 185));
-        table.getTableHeader().setForeground(Color.WHITE);
-
+        
+        ModernTable modernTable = new ModernTable(columnNames, false);
+        DefaultTableModel tableModel = modernTable.getModel();
+        JTable table = modernTable.getTable();
+        
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        panel.add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setBorder(BorderFactory.createLineBorder(ModernTheme.BORDER_COLOR, 1));
+        scrollPane.getViewport().setBackground(ModernTheme.BG_DARK);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Bottom actions
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        actions.setBackground(new Color(245, 247, 250));
-        JButton cancelBtn = new JButton("Cancel Booking");
-        JButton refreshBtn = new JButton("Refresh");
-        cancelBtn.setBackground(new Color(231, 76, 60));
-        cancelBtn.setForeground(Color.WHITE);
-        cancelBtn.setFocusPainted(false);
-        refreshBtn.setBackground(new Color(149, 165, 166));
-        refreshBtn.setForeground(Color.WHITE);
-        refreshBtn.setFocusPainted(false);
-        actions.add(cancelBtn);
-        actions.add(refreshBtn);
-        panel.add(actions, BorderLayout.SOUTH);
+        // Bottom action panel
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, ModernTheme.PADDING_MEDIUM));
+        actionPanel.setBackground(ModernTheme.BG_DARK);
 
-        cancelBtn.addActionListener(e -> {
+        ActionButton cancelButton = new ActionButton("Cancel Booking", ActionButton.Type.DANGER);
+        cancelButton.setPreferredSize(new Dimension(160, 45));
+
+        actionPanel.add(cancelButton);
+        contentPanel.add(actionPanel, BorderLayout.SOUTH);
+        panel.add(contentPanel, BorderLayout.CENTER);
+
+        // Cancel button action
+        cancelButton.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
                 int modelRow = table.convertRowIndexToModel(row);
-                int bookingId = (int) bookingsModel.getValueAt(modelRow, 0);
-                int confirm = JOptionPane.showConfirmDialog(panel, "Cancel booking #" + bookingId + "?", "Confirm", JOptionPane.YES_NO_OPTION);
+                int bookingId = (int) tableModel.getValueAt(modelRow, 0);
+                int confirm = JOptionPane.showConfirmDialog(panel, 
+                                                             "Cancel booking #" + bookingId + "?", 
+                                                             "Confirm Cancellation", 
+                                                             JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     if (bookingService.cancelBooking(bookingId)) {
-                        Toast.success(panel, "Booking cancelled.");
-                        loadUserBookings(bookingsModel);
+                        Toast.success(panel, "Booking cancelled successfully");
+                        loadUserBookings(tableModel);
                     } else {
-                        Toast.error(panel, "Failed to cancel booking.");
+                        Toast.error(panel, "Failed to cancel booking");
                     }
                 }
             } else {
-                Toast.info(panel, "Select a booking to cancel.");
+                Toast.info(panel, "Please select a booking to cancel");
             }
         });
 
-        refreshBtn.addActionListener(e -> loadUserBookings(bookingsModel));
+        // Refresh button action
+        refreshButton.addActionListener(e -> loadUserBookings(tableModel));
 
         // Initial load
-        loadUserBookings(bookingsModel);
+        loadUserBookings(tableModel);
 
         return panel;
     }
@@ -555,82 +666,111 @@ public class UserDashboard extends JPanel {
     }
 
     private JPanel createProfilePanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 247, 250));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(ModernTheme.BG_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE, 
+                                                         ModernTheme.PADDING_LARGE));
+
+        // Header section
+        JPanel headerPanel = ModernTheme.createHeaderPanel("User Profile", "Manage your account settings");
+        panel.add(headerPanel, BorderLayout.NORTH);
+
+        // Main content - Card panel
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(ModernTheme.BG_DARK);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+
+        // Profile info card
+        JPanel profileCard = ModernTheme.createCardPanel();
+        profileCard.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(20, 20, 20, 20);
-
-        JLabel title = new JLabel("User Profile");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(41, 128, 185));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        panel.add(title, gbc);
-
-        // Profile information
-        gbc.gridwidth = 1;
+        gbc.insets = new Insets(12, 15, 12, 15);
         gbc.anchor = GridBagConstraints.WEST;
-        // Labels
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(new JLabel("Username:"), gbc);
-        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Username row
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.3;
+        JLabel usernameLabel = new JLabel("Username:");
+        usernameLabel.setFont(ModernTheme.FONT_BOLD);
+        usernameLabel.setForeground(ModernTheme.TEXT_SECONDARY);
+        profileCard.add(usernameLabel, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 0.7;
         lblProfileUsernameValue = new JLabel("Unknown");
-        panel.add(lblProfileUsernameValue, gbc);
+        lblProfileUsernameValue.setFont(ModernTheme.FONT_LARGE);
+        lblProfileUsernameValue.setForeground(ModernTheme.TEXT_PRIMARY);
+        profileCard.add(lblProfileUsernameValue, gbc);
 
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(new JLabel("Role:"), gbc);
-        gbc.gridx = 1;
+        // Role row
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.3;
+        JLabel roleLabel = new JLabel("Role:");
+        roleLabel.setFont(ModernTheme.FONT_BOLD);
+        roleLabel.setForeground(ModernTheme.TEXT_SECONDARY);
+        profileCard.add(roleLabel, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 0.7;
         lblProfileRoleValue = new JLabel("User");
-        panel.add(lblProfileRoleValue, gbc);
+        lblProfileRoleValue.setFont(ModernTheme.FONT_LARGE);
+        lblProfileRoleValue.setForeground(ModernTheme.TEXT_PRIMARY);
+        profileCard.add(lblProfileRoleValue, gbc);
 
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(new JLabel("Organization:"), gbc);
-        gbc.gridx = 1;
+        // Organization row
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.3;
+        JLabel orgLabel = new JLabel("Organization:");
+        orgLabel.setFont(ModernTheme.FONT_BOLD);
+        orgLabel.setForeground(ModernTheme.TEXT_SECONDARY);
+        profileCard.add(orgLabel, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 0.7;
         lblProfileOrgValue = new JLabel("-");
-        panel.add(lblProfileOrgValue, gbc);
+        lblProfileOrgValue.setFont(ModernTheme.FONT_LARGE);
+        lblProfileOrgValue.setForeground(ModernTheme.TEXT_PRIMARY);
+        profileCard.add(lblProfileOrgValue, gbc);
 
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(new JLabel("Member Since:"), gbc);
-        gbc.gridx = 1;
+        // Member Since row
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3;
+        JLabel memberLabel = new JLabel("Member Since:");
+        memberLabel.setFont(ModernTheme.FONT_BOLD);
+        memberLabel.setForeground(ModernTheme.TEXT_SECONDARY);
+        profileCard.add(memberLabel, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 0.7;
         lblProfileMemberSinceValue = new JLabel("-");
-        panel.add(lblProfileMemberSinceValue, gbc);
+        lblProfileMemberSinceValue.setFont(ModernTheme.FONT_LARGE);
+        lblProfileMemberSinceValue.setForeground(ModernTheme.TEXT_PRIMARY);
+        profileCard.add(lblProfileMemberSinceValue, gbc);
 
-        // Actions: Refresh + Logout
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        gbc.insets = new Insets(40, 20, 20, 20);
+        profileCard.setMaximumSize(new Dimension(800, 250));
+        profileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
+        contentPanel.add(profileCard);
+        contentPanel.add(Box.createVerticalStrut(ModernTheme.PADDING_LARGE));
 
-        JPanel actionsPanel = new JPanel(new FlowLayout());
-        actionsPanel.setBackground(new Color(245, 247, 250));
+        // Action buttons panel
+        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        actionsPanel.setBackground(ModernTheme.BG_DARK);
+        actionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JButton refreshButton = new JButton("Refresh Profile");
-        refreshButton.setBackground(new Color(52, 152, 219));
-        refreshButton.setForeground(Color.WHITE);
-        refreshButton.setFocusPainted(false);
-        refreshButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        refreshButton.setPreferredSize(new Dimension(170, 40));
+        ActionButton refreshButton = new ActionButton("Refresh Profile", ActionButton.Type.SECONDARY);
+        refreshButton.setPreferredSize(new Dimension(170, 45));
         refreshButton.addActionListener(e -> refreshProfileInfo());
 
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.setBackground(new Color(231, 76, 60));
-        logoutButton.setForeground(Color.WHITE);
-        logoutButton.setFocusPainted(false);
-        logoutButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        logoutButton.setPreferredSize(new Dimension(150, 40));
+        ActionButton logoutButton = new ActionButton("Logout", ActionButton.Type.DANGER);
+        logoutButton.setPreferredSize(new Dimension(150, 45));
         logoutButton.addActionListener(e -> showLogoutDialog());
 
         actionsPanel.add(refreshButton);
-        actionsPanel.add(Box.createHorizontalStrut(16));
         actionsPanel.add(logoutButton);
+        contentPanel.add(actionsPanel);
 
-        panel.add(actionsPanel, gbc);
+        // Add content to panel with some bottom spacing
+        JPanel wrapperPanel = new JPanel(new BorderLayout());
+        wrapperPanel.setBackground(ModernTheme.BG_DARK);
+        wrapperPanel.add(contentPanel, BorderLayout.NORTH);
+        
+        panel.add(wrapperPanel, BorderLayout.CENTER);
 
         // Initialize with current values
         refreshProfileInfo();
