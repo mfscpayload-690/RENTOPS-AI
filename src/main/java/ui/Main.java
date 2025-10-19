@@ -2,34 +2,37 @@ package ui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.GradientPaint;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-
-import javax.swing.BorderFactory;
 import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
-
 import services.AuthService;
-import ui.components.KeyboardShortcuts;
 import utils.DatabaseSeeder;
+import utils.ModernTheme;
 
+/**
+ * Main entry point for RENTOPS-AI application
+ * 
+ * Initialization sequence:
+ * 1. Apply modern dark theme (FlatLaf)
+ * 2. Seed database with initial data if needed
+ * 3. Launch main frame with login screen
+ * 4. Auto-restore previous session if available
+ */
 public class Main {
 
     public static void main(String[] args) {
-        // Seed cars before launching UI (non-blocking safety)
+        // STEP 1: Initialize modern theme BEFORE creating any UI components
+        System.out.println("Initializing modern theme...");
+        ModernTheme.initialize();
+        
+        // STEP 2: Seed cars before launching UI (non-blocking safety)
         try {
             DatabaseSeeder.seedCarsIfNeeded();
         } catch (Exception e) {
             System.err.println("Startup seeding failed: " + e.getMessage());
         }
+        
+        // STEP 3: Launch UI on EDT
         SwingUtilities.invokeLater(() -> new RentopsAIMainFrame().setVisible(true));
     }
 }
@@ -43,15 +46,15 @@ class RentopsAIMainFrame extends JFrame {
     public RentopsAIMainFrame() {
         this.authService = new AuthService();
 
-        setTitle("Rentops-AI");
+        setTitle("Rentops-AI - Modern Car Rental Management");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1000, 700);
+        setSize(1200, 800); // Increased size for modern layout
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
-
-        setJMenuBar(createMenuBar());
+        
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
+        cardPanel.setBackground(ModernTheme.BG_DARK);
 
         initializePanels();
 
@@ -68,26 +71,13 @@ class RentopsAIMainFrame extends JFrame {
             cardLayout.show(cardPanel, "login");
         }
 
-        JPanel mainBgPanel = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, new Color(245, 247, 250), 0, getHeight(), new Color(230, 235, 245));
-                g2.setPaint(gp);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        mainBgPanel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
-        mainBgPanel.add(cardPanel, BorderLayout.CENTER);
-        add(mainBgPanel, BorderLayout.CENTER);
+        add(cardPanel, BorderLayout.CENTER);
     }
 
     private void initializePanels() {
-        // Create login panel first; dashboards are created only after login/restore
-        LoginPanel loginPanel = new LoginPanel(authService, () -> {
-            // On successful login, instantiate the appropriate dashboard so it picks up current user
+        // Create modern login panel first
+        ModernLoginPanel loginPanel = new ModernLoginPanel(authService, () -> {
+            // On successful login, instantiate the appropriate dashboard
             System.out.println("[DEBUG] Login success callback invoked. isAdmin=" + authService.isAdmin() + " user=" + (authService.getCurrentUser() != null ? authService.getCurrentUser().getUsername() : "null"));
             if (authService.isAdmin()) {
                 AdminDashboard adminDashboard = new AdminDashboard(authService, cardLayout, cardPanel);
@@ -116,28 +106,5 @@ class RentopsAIMainFrame extends JFrame {
                 cardPanel.add(userDashboard, "user");
             }
         }
-
-        // Initialize keyboard shortcuts for the main frame
-        KeyboardShortcuts.initialize(getRootPane());
-        // Show a hint about keyboard shortcuts after a short delay
-        Timer hintTimer = new Timer(1500, e -> KeyboardShortcuts.showShortcutHint(this));
-        hintTimer.setRepeats(false);
-        hintTimer.start();
-    }
-
-    private JMenuBar createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-        menuBar.setBackground(new Color(30, 30, 40));
-        menuBar.setForeground(Color.WHITE);
-        menuBar.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        String[] menus = {"File", "Users", "Cars", "Rentals", "Reports", "Help"};
-        for (String m : menus) {
-            JMenu menu = new JMenu(m);
-            menu.setForeground(Color.WHITE);
-            menu.setFont(new Font("Segoe UI", Font.BOLD, 17));
-            menuBar.add(menu);
-        }
-        menuBar.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(52, 73, 94)));
-        return menuBar;
     }
 }

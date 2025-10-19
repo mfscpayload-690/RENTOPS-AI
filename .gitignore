@@ -80,3 +80,5 @@ gradle-app.setting
 clean_bin/icons/Admin.png
 .gitignore
 clean_bin/icons/User.png
+.vscode/settings.json
+.vscode/settings.json

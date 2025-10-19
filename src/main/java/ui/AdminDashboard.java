@@ -6,14 +6,16 @@ import dao.UserDAO;
 import models.Car;
 import models.Booking;
 import models.User;
-import ui.components.KeyboardShortcuts;
-import ui.components.Toast;
+import ui.components.*;
+import utils.ModernTheme;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.TableRowSorter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
 import java.awt.image.BufferedImage;
 import java.awt.*;
 import java.math.BigDecimal;
@@ -130,60 +132,43 @@ public class AdminDashboard extends JPanel {
     }
 
     private JPanel createOverviewPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 247, 250));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(20, 20, 20, 20);
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(ModernTheme.BG_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JLabel title = new JLabel("Admin Dashboard Overview");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        title.setForeground(new Color(52, 73, 94));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        panel.add(title, gbc);
+        // Header
+        JPanel header = ModernTheme.createHeaderPanel(
+            "Dashboard Overview",
+            "Real-time statistics and system insights"
+        );
+        panel.add(header, BorderLayout.NORTH);
 
-        // Statistics cards
-        gbc.gridwidth = 1;
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(createStatCard("Total Users", "Loading...", new Color(52, 152, 219)), gbc);
-        gbc.gridx = 1;
-        panel.add(createStatCard("Total Cars", "Loading...", new Color(46, 204, 113)), gbc);
+        // Statistics cards grid
+        JPanel statsGrid = new JPanel(new GridLayout(2, 2, 16, 16));
+        statsGrid.setBackground(ModernTheme.BG_DARK);
+        statsGrid.setBorder(BorderFactory.createEmptyBorder(24, 0, 20, 0));
 
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(createStatCard("Active Bookings", "Loading...", new Color(230, 126, 34)), gbc);
-        gbc.gridx = 1;
-        panel.add(createStatCard("Available Cars", "Loading...", new Color(155, 89, 182)), gbc);
+        // Create modern stat cards
+        StatCard totalUsersCard = new StatCard("Total Users", "Loading...", ModernTheme.ACCENT_BLUE);
+        StatCard totalCarsCard = new StatCard("Total Cars", "Loading...", ModernTheme.SUCCESS_GREEN);
+        StatCard activeBookingsCard = new StatCard("Active Bookings", "Loading...", ModernTheme.ACCENT_ORANGE);
+        StatCard availableCarsCard = new StatCard("Available Cars", "Loading...", new Color(155, 89, 182));
 
-        // Load statistics
-        loadStatistics(panel);
+        statsGrid.add(totalUsersCard);
+        statsGrid.add(totalCarsCard);
+        statsGrid.add(activeBookingsCard);
+        statsGrid.add(availableCarsCard);
+
+        panel.add(statsGrid, BorderLayout.CENTER);
+
+        // Load statistics asynchronously
+        loadStatisticsWithCards(totalUsersCard, totalCarsCard, activeBookingsCard, availableCarsCard);
 
         return panel;
     }
 
-    private JPanel createStatCard(String title, String value, Color color) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createLineBorder(color, 2));
-        card.setPreferredSize(new Dimension(200, 100));
-
-        JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        titleLabel.setForeground(new Color(127, 140, 141));
-
-        JLabel valueLabel = new JLabel(value, SwingConstants.CENTER);
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        valueLabel.setForeground(color);
-
-        card.add(titleLabel, BorderLayout.NORTH);
-        card.add(valueLabel, BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private void loadStatistics(JPanel overviewPanel) {
+    // New method to load statistics with modern cards
+    private void loadStatisticsWithCards(StatCard usersCard, StatCard carsCard, StatCard bookingsCard, StatCard availableCard) {
         SwingWorker<int[], Void> worker = new SwingWorker<int[], Void>() {
             @Override
             protected int[] doInBackground() {
@@ -192,18 +177,18 @@ public class AdminDashboard extends JPanel {
                 int activeBookings = 0;
                 int availableCars = 0;
                 try {
-                    // Fetch users
                     java.util.List<User> users = userDAO.getAllUsers();
                     totalUsers = users.size();
-                    // Fetch cars
                     java.util.List<Car> cars = carDAO.getAllCars();
                     totalCars = cars.size();
-                    // Available cars
                     java.util.List<Car> available = carDAO.getAvailableCars();
                     availableCars = available.size();
-                    // Fetch bookings
                     java.util.List<Booking> bookings = bookingDAO.getAllBookings();
-                    activeBookings = (int) bookings.stream().filter(b -> b.getStatus() != null && b.getStatus().toLowerCase().contains("active")).count();
+                    activeBookings = (int) bookings.stream()
+                        .filter(b -> b.getStatus() != null && 
+                                   (b.getStatus().equalsIgnoreCase("active") || 
+                                    b.getStatus().equalsIgnoreCase("approved")))
+                        .count();
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -214,34 +199,10 @@ public class AdminDashboard extends JPanel {
             protected void done() {
                 try {
                     int[] stats = get();
-                    Component[] components = overviewPanel.getComponents();
-                    for (Component comp : components) {
-                        if (comp instanceof JPanel) {
-                            JPanel card = (JPanel) comp;
-                            if (card.getComponentCount() >= 2) {
-                                Component valueComp = card.getComponent(1);
-                                if (valueComp instanceof JLabel) {
-                                    JLabel titleComp = (JLabel) card.getComponent(0);
-                                    String title = titleComp.getText();
-                                    JLabel valueLabel = (JLabel) valueComp;
-                                    switch (title) {
-                                        case "Total Users":
-                                            valueLabel.setText(String.valueOf(stats[0]));
-                                            break;
-                                        case "Total Cars":
-                                            valueLabel.setText(String.valueOf(stats[1]));
-                                            break;
-                                        case "Active Bookings":
-                                            valueLabel.setText(String.valueOf(stats[2]));
-                                            break;
-                                        case "Available Cars":
-                                            valueLabel.setText(String.valueOf(stats[3]));
-                                            break;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    usersCard.updateValue(String.valueOf(stats[0]), null);
+                    carsCard.updateValue(String.valueOf(stats[1]), null);
+                    bookingsCard.updateValue(String.valueOf(stats[2]), null);
+                    availableCard.updateValue(String.valueOf(stats[3]), null);
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -252,40 +213,51 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createUsersPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245, 247, 250));
+        panel.setBackground(ModernTheme.BG_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Header with title and search
-        JPanel header = new JPanel();
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        header.setBackground(new Color(245, 247, 250));
+        // Header with title and toolbar
+        JPanel headerPanel = ModernTheme.createHeaderPanel("User Management", "Manage users, roles, and permissions");
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        JLabel title = new JLabel("User Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(52, 73, 94));
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Center panel with search and table
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setBackground(ModernTheme.BG_DARK);
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
 
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.setBackground(new Color(245, 247, 250));
-        JLabel searchLabel = new JLabel("Search:");
-        JTextField searchField = new JTextField(20);
-        searchPanel.add(searchLabel);
-        searchPanel.add(searchField);
-        searchPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Search bar
+        JPanel searchBar = ModernTheme.createSearchBar("Search users by name, role, or organization...");
+        JTextField searchField = ModernTheme.getSearchField(searchBar);
+        centerPanel.add(searchBar, BorderLayout.NORTH);
 
-        header.add(title);
-        header.add(Box.createVerticalStrut(6));
-        header.add(searchPanel);
-        panel.add(header, BorderLayout.NORTH);
-
-        // Users table
+        // Modern table with StatusBadge for roles
         String[] columnNames = {"ID", "User Code", "Username", "Role", "Organization", "Created At"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setRowHeight(25);
-        table.getTableHeader().setBackground(new Color(52, 73, 94));
-        table.getTableHeader().setForeground(Color.WHITE);
+        ModernTable modernTable = new ModernTable(columnNames);
+        JTable table = modernTable.getTable();
+        DefaultTableModel model = modernTable.getModel();
+
+        // Custom renderer for Role column to show StatusBadge
+        table.getColumnModel().getColumn(3).setCellRenderer(new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+                panel.setOpaque(true);
+                
+                if (isSelected) {
+                    panel.setBackground(new Color(64, 150, 255, 50));
+                } else {
+                    panel.setBackground(row % 2 == 0 ? new Color(30, 30, 30) : new Color(35, 35, 35));
+                }
+                
+                String role = value != null ? value.toString() : "";
+                StatusBadge badge = role.equalsIgnoreCase("admin") 
+                    ? StatusBadge.error(role) 
+                    : StatusBadge.primary(role);
+                panel.add(badge);
+                
+                return panel;
+            }
+        });
 
         // Enable filtering
         TableRowSorter<DefaultTableModel> userSorter = new TableRowSorter<>(model);
@@ -316,34 +288,39 @@ public class AdminDashboard extends JPanel {
             }
         });
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        panel.add(scrollPane, BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(modernTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(15, 0, 0, 0));
+        scrollPane.setBackground(ModernTheme.BG_DARK);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(centerPanel, BorderLayout.CENTER);
 
-        // Button panel for add/delete
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        buttonPanel.setBackground(new Color(245, 247, 250));
-
-        JButton addButton = new JButton("Add User");
-        addButton.setBackground(new Color(46, 204, 113));
-        addButton.setForeground(Color.WHITE);
-        addButton.setFocusPainted(false);
+        // Modern button toolbar
+        JPanel toolbar = ModernTheme.createToolbar();
+        
+        ActionButton addButton = new ActionButton("Add User", ActionButton.Type.SUCCESS);
         addButton.addActionListener(e -> showAddUserDialog(model));
 
-        JButton deleteButton = new JButton("Delete User");
-        deleteButton.setBackground(new Color(231, 76, 60));
-        deleteButton.setForeground(Color.WHITE);
-        deleteButton.setFocusPainted(false);
+        ActionButton editButton = new ActionButton("Edit User", ActionButton.Type.SECONDARY);
+        editButton.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+            if (selectedRow >= 0) {
+                Toast.info(panel, "Edit user functionality coming soon!");
+            } else {
+                Toast.info(panel, "Select a user to edit.");
+            }
+        });
+
+        ActionButton deleteButton = new ActionButton("Delete User", ActionButton.Type.DANGER);
         deleteButton.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow >= 0) {
-                int userId = (int) model.getValueAt(selectedRow, 0);
-                String username = (String) model.getValueAt(selectedRow, 1);
+                int userId = (int) model.getValueAt(table.convertRowIndexToModel(selectedRow), 0);
+                String username = (String) model.getValueAt(table.convertRowIndexToModel(selectedRow), 2);
                 int confirm = JOptionPane.showConfirmDialog(panel, "Delete user '" + username + "'?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     if (userDAO.deleteUser(userId)) {
                         Toast.success(panel, "User deleted successfully.");
-                        model.removeRow(selectedRow);
+                        modernTable.removeSelectedRow();
                     } else {
                         Toast.error(panel, "Failed to delete user.");
                     }
@@ -353,11 +330,27 @@ public class AdminDashboard extends JPanel {
             }
         });
 
-        buttonPanel.add(addButton);
-        buttonPanel.add(deleteButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        ActionButton refreshButton = new ActionButton("Refresh", ActionButton.Type.GHOST);
+        refreshButton.addActionListener(e -> {
+            refreshButton.setLoading(true);
+            loadUsersData(model, refreshButton);
+        });
+
+        toolbar.add(addButton);
+        toolbar.add(editButton);
+        toolbar.add(deleteButton);
+        toolbar.add(Box.createHorizontalGlue());
+        toolbar.add(refreshButton);
+        panel.add(toolbar, BorderLayout.SOUTH);
 
         // Load users from database
+        loadUsersData(model, refreshButton);
+
+        return panel;
+    }
+
+    // Helper method to load users data
+    private void loadUsersData(DefaultTableModel model, ActionButton refreshButton) {
         SwingWorker<List<User>, Void> worker = new SwingWorker<List<User>, Void>() {
             @Override
             protected List<User> doInBackground() {
@@ -383,12 +376,14 @@ public class AdminDashboard extends JPanel {
                 } catch (Exception e) {
                     e.printStackTrace();
                     JOptionPane.showMessageDialog(null, "Error loading users: " + e.getMessage());
+                } finally {
+                    if (refreshButton != null) {
+                        refreshButton.setLoading(false);
+                    }
                 }
             }
         };
         worker.execute();
-
-        return panel;
     }
 
     // Dialog for adding a new user
@@ -452,40 +447,62 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createCarsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245, 247, 250));
+        panel.setBackground(ModernTheme.BG_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Header with title and search
-        JPanel header = new JPanel();
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        header.setBackground(new Color(245, 247, 250));
+        // Header with title and subtitle
+        JPanel headerPanel = ModernTheme.createHeaderPanel("Car Management", "Manage your fleet, availability, and pricing");
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        JLabel title = new JLabel("Car Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(52, 73, 94));
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Center panel with search and table
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setBackground(ModernTheme.BG_DARK);
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
 
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.setBackground(new Color(245, 247, 250));
-        JLabel searchLabel = new JLabel("Search:");
-        JTextField searchField = new JTextField(20);
-        searchPanel.add(searchLabel);
-        searchPanel.add(searchField);
-        searchPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Search bar
+        JPanel searchBar = ModernTheme.createSearchBar("Search cars by make, model, or license plate...");
+        JTextField searchField = ModernTheme.getSearchField(searchBar);
+        centerPanel.add(searchBar, BorderLayout.NORTH);
 
-        header.add(title);
-        header.add(Box.createVerticalStrut(6));
-        header.add(searchPanel);
-        panel.add(header, BorderLayout.NORTH);
+        // Modern table with StatusBadge for car status
+        String[] columnNames = {"ID", "Car Code", "Make", "Model", "Year", "License Plate", "Status", "Total KM", "Price/Day"};
+        ModernTable modernTable = new ModernTable(columnNames);
+        JTable table = modernTable.getTable();
+        DefaultTableModel model = modernTable.getModel();
 
-        // Cars table
-        String[] columnNames = {"ID", "Car Code", "Make", "Model", "Year", "License Plate", "Status", "Total KM Driven", "Price/Day"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setRowHeight(25);
-        table.getTableHeader().setBackground(new Color(52, 73, 94));
-        table.getTableHeader().setForeground(Color.WHITE);
+        // Custom renderer for Status column to show StatusBadge
+        table.getColumnModel().getColumn(6).setCellRenderer(new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+                panel.setOpaque(true);
+                
+                if (isSelected) {
+                    panel.setBackground(new Color(64, 150, 255, 50));
+                } else {
+                    panel.setBackground(row % 2 == 0 ? new Color(30, 30, 30) : new Color(35, 35, 35));
+                }
+                
+                String status = value != null ? value.toString().toLowerCase() : "";
+                StatusBadge badge;
+                switch (status) {
+                    case "available":
+                        badge = StatusBadge.success(value.toString());
+                        break;
+                    case "rented":
+                        badge = StatusBadge.warning(value.toString());
+                        break;
+                    case "maintenance":
+                        badge = StatusBadge.error(value.toString());
+                        break;
+                    default:
+                        badge = StatusBadge.neutral(value.toString());
+                }
+                panel.add(badge);
+                
+                return panel;
+            }
+        });
 
         // Enable filtering
         TableRowSorter<DefaultTableModel> carSorter = new TableRowSorter<>(model);
@@ -516,9 +533,11 @@ public class AdminDashboard extends JPanel {
             }
         });
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        panel.add(scrollPane, BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(modernTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(15, 0, 0, 0));
+        scrollPane.setBackground(ModernTheme.BG_DARK);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(centerPanel, BorderLayout.CENTER);
 
         // Add double-click listener to show car details dialog
         table.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -527,7 +546,7 @@ public class AdminDashboard extends JPanel {
                 if (e.getClickCount() == 2) {
                     int row = table.getSelectedRow();
                     if (row >= 0) {
-                        row = table.convertRowIndexToModel(row); // Convert in case of sorting
+                        row = table.convertRowIndexToModel(row);
                         int carId = (int) model.getValueAt(row, 0);
                         Car car = carDAO.getById(carId);
                         if (car != null) {
@@ -539,38 +558,17 @@ public class AdminDashboard extends JPanel {
             }
         });
 
-        // Buttons panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        buttonPanel.setBackground(new Color(245, 247, 250));
+        // Modern button toolbar
+        JPanel toolbar = ModernTheme.createToolbar();
 
-        JButton addButton = new JButton("Add Car");
-        JButton editButton = new JButton("Edit Car");
-        JButton deleteButton = new JButton("Delete Car");
-        JButton refreshButton = new JButton("Refresh");
-
-        addButton.setBackground(new Color(46, 204, 113));
-        editButton.setBackground(new Color(52, 152, 219));
-        deleteButton.setBackground(new Color(231, 76, 60));
-        refreshButton.setBackground(new Color(149, 165, 166));
-
-        addButton.setForeground(Color.WHITE);
-        editButton.setForeground(Color.WHITE);
-        deleteButton.setForeground(Color.WHITE);
-        refreshButton.setForeground(Color.WHITE);
-
-        addButton.setFocusPainted(false);
-        editButton.setFocusPainted(false);
-        deleteButton.setFocusPainted(false);
-        refreshButton.setFocusPainted(false);
-
-        // Add Car
+        ActionButton addButton = new ActionButton("Add Car", ActionButton.Type.SUCCESS);
         addButton.addActionListener(e -> showAddCarDialog(model));
 
-        // Edit Car
+        ActionButton editButton = new ActionButton("Edit Car", ActionButton.Type.SECONDARY);
         editButton.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow >= 0) {
-                int carId = (int) model.getValueAt(selectedRow, 0);
+                int carId = (int) model.getValueAt(table.convertRowIndexToModel(selectedRow), 0);
                 Car car = carDAO.getById(carId);
                 if (car != null) {
                     showEditCarDialog(model, car, selectedRow);
@@ -582,17 +580,18 @@ public class AdminDashboard extends JPanel {
             }
         });
 
-        // Delete Car
+        ActionButton deleteButton = new ActionButton("Delete Car", ActionButton.Type.DANGER);
         deleteButton.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow >= 0) {
-                int carId = (int) model.getValueAt(selectedRow, 0);
-                String carName = model.getValueAt(selectedRow, 1) + " " + model.getValueAt(selectedRow, 2);
+                int modelRow = table.convertRowIndexToModel(selectedRow);
+                int carId = (int) model.getValueAt(modelRow, 0);
+                String carName = model.getValueAt(modelRow, 2) + " " + model.getValueAt(modelRow, 3);
                 int confirm = JOptionPane.showConfirmDialog(panel, "Delete car '" + carName + "'?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     if (carDAO.deleteCar(carId)) {
                         Toast.success(panel, "Car deleted successfully.");
-                        model.removeRow(selectedRow);
+                        modernTable.removeSelectedRow();
                     } else {
                         Toast.error(panel, "Failed to delete car.");
                     }
@@ -602,15 +601,18 @@ public class AdminDashboard extends JPanel {
             }
         });
 
-        // Refresh
-        refreshButton.addActionListener(e -> loadCarsData(model));
+        ActionButton refreshButton = new ActionButton("Refresh", ActionButton.Type.GHOST);
+        refreshButton.addActionListener(e -> {
+            refreshButton.setLoading(true);
+            loadCarsData(model, refreshButton);
+        });
 
-        buttonPanel.add(addButton);
-        buttonPanel.add(editButton);
-        buttonPanel.add(deleteButton);
-        buttonPanel.add(refreshButton);
-
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        toolbar.add(addButton);
+        toolbar.add(editButton);
+        toolbar.add(deleteButton);
+        toolbar.add(Box.createHorizontalGlue());
+        toolbar.add(refreshButton);
+        panel.add(toolbar, BorderLayout.SOUTH);
 
         // Load initial data from CarDAO
         loadCarsData(model);
@@ -653,6 +655,10 @@ public class AdminDashboard extends JPanel {
     }
 
     private void loadCarsData(DefaultTableModel model) {
+        loadCarsData(model, null);
+    }
+
+    private void loadCarsData(DefaultTableModel model, ActionButton refreshButton) {
         SwingWorker<List<Car>, Void> worker = new SwingWorker<List<Car>, Void>() {
             @Override
             protected List<Car> doInBackground() throws Exception {
@@ -681,6 +687,10 @@ public class AdminDashboard extends JPanel {
                 } catch (Exception e) {
                     e.printStackTrace();
                     JOptionPane.showMessageDialog(null, "Error loading cars: " + e.getMessage());
+                } finally {
+                    if (refreshButton != null) {
+                        refreshButton.setLoading(false);
+                    }
                 }
             }
         };
@@ -689,63 +699,74 @@ public class AdminDashboard extends JPanel {
 
     private JPanel createBookingsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245, 247, 250));
+        panel.setBackground(ModernTheme.BG_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Header with title and refresh
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(245, 247, 250));
-        JLabel title = new JLabel("Booking Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(new Color(52, 73, 94));
-        header.add(title, BorderLayout.WEST);
-        JButton refreshBtn = new JButton("Refresh");
-        refreshBtn.setBackground(new Color(149, 165, 166));
-        refreshBtn.setForeground(Color.WHITE);
-        refreshBtn.setFocusPainted(false);
-        // model not yet defined here; listener is added after model creation
-        header.add(refreshBtn, BorderLayout.EAST);
-        panel.add(header, BorderLayout.NORTH);
+        // Header with title and subtitle
+        JPanel headerPanel = ModernTheme.createHeaderPanel("Booking Management", "Track and manage rental bookings");
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Bookings table
+        // Center panel with table
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setBackground(ModernTheme.BG_DARK);
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        // Modern table with StatusBadge for booking status
         String[] columnNames = {"ID", "User", "Car", "Start Date", "End Date", "Status", "Total Price"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setRowHeight(25);
-        table.getTableHeader().setBackground(new Color(52, 73, 94));
-        table.getTableHeader().setForeground(Color.WHITE);
+        ModernTable modernTable = new ModernTable(columnNames);
+        JTable table = modernTable.getTable();
+        DefaultTableModel model = modernTable.getModel();
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        panel.add(scrollPane, BorderLayout.CENTER);
+        // Custom renderer for Status column to show StatusBadge
+        table.getColumnModel().getColumn(5).setCellRenderer(new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+                panel.setOpaque(true);
+                
+                if (isSelected) {
+                    panel.setBackground(new Color(64, 150, 255, 50));
+                } else {
+                    panel.setBackground(row % 2 == 0 ? new Color(30, 30, 30) : new Color(35, 35, 35));
+                }
+                
+                String status = value != null ? value.toString().toLowerCase() : "";
+                StatusBadge badge;
+                switch (status) {
+                    case "pending":
+                        badge = StatusBadge.warning(value.toString());
+                        break;
+                    case "approved":
+                        badge = StatusBadge.info(value.toString());
+                        break;
+                    case "active":
+                        badge = StatusBadge.primary(value.toString());
+                        break;
+                    case "completed":
+                        badge = StatusBadge.success(value.toString());
+                        break;
+                    case "cancelled":
+                        badge = StatusBadge.error(value.toString());
+                        break;
+                    default:
+                        badge = StatusBadge.neutral(value.toString());
+                }
+                panel.add(badge);
+                
+                return panel;
+            }
+        });
 
-        // Wire refresh now that model exists
-        refreshBtn.addActionListener(e -> loadBookingsData(model));
+        JScrollPane scrollPane = new JScrollPane(modernTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        scrollPane.setBackground(ModernTheme.BG_DARK);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(centerPanel, BorderLayout.CENTER);
 
-        // Action buttons
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        actions.setBackground(new Color(245, 247, 250));
-        JButton approveBtn = new JButton("Approve");
-        JButton startBtn = new JButton("Start");
-        JButton completeBtn = new JButton("Complete");
-        JButton cancelBtn = new JButton("Cancel");
+        // Modern button toolbar
+        JPanel toolbar = ModernTheme.createToolbar();
 
-        for (JButton b : new JButton[]{approveBtn, startBtn, completeBtn, cancelBtn}) {
-            b.setFocusPainted(false);
-            b.setForeground(Color.WHITE);
-        }
-        approveBtn.setBackground(new Color(52, 152, 219));
-        startBtn.setBackground(new Color(230, 126, 34));
-        completeBtn.setBackground(new Color(46, 204, 113));
-        cancelBtn.setBackground(new Color(231, 76, 60));
-
-        actions.add(approveBtn);
-        actions.add(startBtn);
-        actions.add(completeBtn);
-        actions.add(cancelBtn);
-        panel.add(actions, BorderLayout.SOUTH);
-
+        ActionButton approveBtn = new ActionButton("Approve", ActionButton.Type.SECONDARY);
         approveBtn.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
@@ -753,7 +774,7 @@ public class AdminDashboard extends JPanel {
                 int id = (int) model.getValueAt(modelRow, 0);
                 if (bookingService.approveBooking(id)) {
                     Toast.success(panel, "Booking approved.");
-                    loadBookingsData(model);
+                    loadBookingsData(model, null);
                 } else {
                     Toast.error(panel, "Failed to approve booking.");
                 }
@@ -762,6 +783,7 @@ public class AdminDashboard extends JPanel {
             }
         });
 
+        ActionButton startBtn = new ActionButton("Start", ActionButton.Type.PRIMARY);
         startBtn.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
@@ -769,7 +791,7 @@ public class AdminDashboard extends JPanel {
                 int id = (int) model.getValueAt(modelRow, 0);
                 if (bookingService.startBooking(id)) {
                     Toast.success(panel, "Booking started.");
-                    loadBookingsData(model);
+                    loadBookingsData(model, null);
                 } else {
                     Toast.error(panel, "Failed to start booking.");
                 }
@@ -778,6 +800,7 @@ public class AdminDashboard extends JPanel {
             }
         });
 
+        ActionButton completeBtn = new ActionButton("Complete", ActionButton.Type.SUCCESS);
         completeBtn.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
@@ -785,7 +808,7 @@ public class AdminDashboard extends JPanel {
                 int id = (int) model.getValueAt(modelRow, 0);
                 if (bookingService.completeBooking(id)) {
                     Toast.success(panel, "Booking completed.");
-                    loadBookingsData(model);
+                    loadBookingsData(model, null);
                 } else {
                     Toast.error(panel, "Failed to complete booking.");
                 }
@@ -794,6 +817,7 @@ public class AdminDashboard extends JPanel {
             }
         });
 
+        ActionButton cancelBtn = new ActionButton("Cancel", ActionButton.Type.DANGER);
         cancelBtn.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
@@ -803,7 +827,7 @@ public class AdminDashboard extends JPanel {
                 if (confirm == JOptionPane.YES_OPTION) {
                     if (bookingService.cancelBooking(id)) {
                         Toast.success(panel, "Booking cancelled.");
-                        loadBookingsData(model);
+                        loadBookingsData(model, null);
                     } else {
                         Toast.error(panel, "Failed to cancel booking.");
                     }
@@ -813,8 +837,22 @@ public class AdminDashboard extends JPanel {
             }
         });
 
+        ActionButton refreshBtn = new ActionButton("Refresh", ActionButton.Type.GHOST);
+        refreshBtn.addActionListener(e -> {
+            refreshBtn.setLoading(true);
+            loadBookingsData(model, refreshBtn);
+        });
+
+        toolbar.add(approveBtn);
+        toolbar.add(startBtn);
+        toolbar.add(completeBtn);
+        toolbar.add(cancelBtn);
+        toolbar.add(Box.createHorizontalGlue());
+        toolbar.add(refreshBtn);
+        panel.add(toolbar, BorderLayout.SOUTH);
+
         // Load bookings data
-        loadBookingsData(model);
+        loadBookingsData(model, refreshBtn);
 
         return panel;
     }
@@ -836,6 +874,10 @@ public class AdminDashboard extends JPanel {
     }
 
     private void loadBookingsData(DefaultTableModel model) {
+        loadBookingsData(model, null);
+    }
+
+    private void loadBookingsData(DefaultTableModel model, ActionButton refreshButton) {
         SwingWorker<List<Booking>, Void> worker = new SwingWorker<List<Booking>, Void>() {
             @Override
             protected List<Booking> doInBackground() throws Exception {
@@ -868,6 +910,10 @@ public class AdminDashboard extends JPanel {
                 } catch (Exception e) {
                     e.printStackTrace();
                     JOptionPane.showMessageDialog(null, "Error loading bookings: " + e.getMessage());
+                } finally {
+                    if (refreshButton != null) {
+                        refreshButton.setLoading(false);
+                    }
                 }
             }
         };

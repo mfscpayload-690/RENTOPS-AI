@@ -1,27 +1,26 @@
+{
+    // Use JDK 21 for the Java Language Server (stable runtime for the extension)
+    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-21",
 
-.{
-    "java.home": "D:\\Windows OS C softwares\\JAVA JDK",
-    "java.configuration.detectJdksAtStart": false,
+    // Keep both JDKs registered; Java 25 remains default for project builds/run
+    "java.configuration.runtimes": [
+        { "name": "JavaSE-21", "path": "C:\\Program Files\\Java\\jdk-21" },
+        { "name": "JavaSE-25", "path": "C:\\Program Files\\Java\\jdk-25", "default": true }
+    ],
+
+    // Let VS Code Java import Maven projects and resolve classpath from pom.xml
+    "java.import.maven.enabled": true,
+    "java.import.gradle.enabled": false,
+    "java.import.generatesMetadataFilesAtProjectRoot": false,
+        "java.configuration.updateBuildConfiguration": "automatic",
+
+    // Project behavior
+    "java.configuration.detectJdksAtStart": true,
     "java.compile.nullAnalysis.mode": "disabled",
     "java.eclipse.downloadSources": true,
-    "java.import.generatesMetadataFilesAtProjectRoot": false,
-    "java.project.sourcePaths": [
-        "dao",
-        "models", 
-        "services",
-        "ui",
-        "utils"
-    ],
-    "java.project.referencedLibraries": [
-        "lib/**/*.jar",
-        "mysql-connector-j-9.4.0.jar"
-    ],
-    "java.project.outputPath": "bin",
     "java.clean.workspace": false,
-    "java.configuration.runtimes": [
-        {
-            "name": "JavaSE-11",
-            "path": "D:\\Windows OS C softwares\\JAVA JDK"
-        }
-    ]
+
+    // Formatting and debugging
+    "java.format.settings.url": ".vscode/java-formatter.xml",
+    "java.debug.settings.onBuildFailureProceed": true
 }
