@@ -9,6 +9,8 @@ import models.User;
 import ui.components.*;
 import utils.ModernTheme;
 
+import ui.components.PieChartPanel;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -33,6 +35,13 @@ public class AdminDashboard extends JPanel {
     private services.AuthService authService;
     private CardLayout parentCardLayout;
     private JPanel parentCardPanel;
+    // Top stats cards (kept as fields to refresh on demand)
+    private StatCard pendingApprovalsStatCard;
+    private StatCard usersStatCard;
+    private StatCard carsStatCard;
+    private StatCard activeBookingsStatCard;
+    private StatCard availableCarsStatCard;
+    private StatCard revenueStatCard;
 
     public AdminDashboard() {
         this(null, null, null);
@@ -142,39 +151,62 @@ public class AdminDashboard extends JPanel {
         );
         panel.add(header, BorderLayout.NORTH);
 
-        // Statistics cards grid
-        JPanel statsGrid = new JPanel(new GridLayout(2, 2, 16, 16));
-        statsGrid.setBackground(ModernTheme.BG_DARK);
-        statsGrid.setBorder(BorderFactory.createEmptyBorder(24, 0, 20, 0));
 
-        // Create modern stat cards
-        StatCard totalUsersCard = new StatCard("Total Users", "Loading...", ModernTheme.ACCENT_BLUE);
-        StatCard totalCarsCard = new StatCard("Total Cars", "Loading...", ModernTheme.SUCCESS_GREEN);
-        StatCard activeBookingsCard = new StatCard("Active Bookings", "Loading...", ModernTheme.ACCENT_ORANGE);
-        StatCard availableCarsCard = new StatCard("Available Cars", "Loading...", new Color(155, 89, 182));
 
-        statsGrid.add(totalUsersCard);
-        statsGrid.add(totalCarsCard);
-        statsGrid.add(activeBookingsCard);
-        statsGrid.add(availableCarsCard);
+    // Main grid panel (2 rows x 3 cols)
+    JPanel mainGrid = new JPanel(new GridBagLayout());
+    mainGrid.setBackground(ModernTheme.BG_DARK);
+    mainGrid.setBorder(BorderFactory.createEmptyBorder(24, 0, 20, 0));
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.insets = new Insets(12, 12, 12, 12);
+    gbc.fill = GridBagConstraints.BOTH;
+    gbc.weightx = 1.0;
+    gbc.weighty = 1.0;
 
-        panel.add(statsGrid, BorderLayout.CENTER);
+    usersStatCard = new StatCard("Total Users", "Loading...", ModernTheme.ACCENT_BLUE);
+    carsStatCard = new StatCard("Total Cars", "Loading...", ModernTheme.SUCCESS_GREEN);
+    activeBookingsStatCard = new StatCard("Active Bookings", "Loading...", ModernTheme.ACCENT_ORANGE);
+    availableCarsStatCard = new StatCard("Available Cars", "Loading...", new Color(155, 89, 182));
+    revenueStatCard = new StatCard("Total Revenue", "Loading...", ModernTheme.ACCENT_BLUE_DARK);
+    pendingApprovalsStatCard = new StatCard("Pending Approvals", "Loading...", ModernTheme.WARNING_YELLOW);
 
-        // Load statistics asynchronously
-        loadStatisticsWithCards(totalUsersCard, totalCarsCard, activeBookingsCard, availableCarsCard);
+    gbc.gridx = 0; gbc.gridy = 0;
+    mainGrid.add(usersStatCard, gbc);
+    gbc.gridx = 1;
+    mainGrid.add(carsStatCard, gbc);
+    gbc.gridx = 2;
+    mainGrid.add(activeBookingsStatCard, gbc);
+    gbc.gridx = 0; gbc.gridy = 1;
+    mainGrid.add(availableCarsStatCard, gbc);
+    gbc.gridx = 1;
+    mainGrid.add(revenueStatCard, gbc);
+    gbc.gridx = 2;
+    mainGrid.add(pendingApprovalsStatCard, gbc);
+
+    panel.add(mainGrid, BorderLayout.CENTER);
+
+    // Load statistics and chart asynchronously
+    refreshTopStats();
+
+    // Periodically refresh top stats (including chart) to reflect new bookings
+    Timer periodic = new Timer(15_000, e -> refreshTopStats());
+    periodic.setRepeats(true);
+    periodic.start();
 
         return panel;
     }
 
     // New method to load statistics with modern cards
-    private void loadStatisticsWithCards(StatCard usersCard, StatCard carsCard, StatCard bookingsCard, StatCard availableCard) {
-        SwingWorker<int[], Void> worker = new SwingWorker<int[], Void>() {
+    private void loadStatisticsWithCards(StatCard usersCard, StatCard carsCard, StatCard bookingsCard, StatCard availableCard, StatCard revenueCard, StatCard pendingCard) {
+        SwingWorker<Object[], Void> worker = new SwingWorker<Object[], Void>() {
             @Override
-            protected int[] doInBackground() {
+            protected Object[] doInBackground() {
                 int totalUsers = 0;
                 int totalCars = 0;
                 int activeBookings = 0;
                 int availableCars = 0;
+                int pendingApprovals = 0;
+                java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
                 try {
                     java.util.List<User> users = userDAO.getAllUsers();
                     totalUsers = users.size();
@@ -188,26 +220,39 @@ public class AdminDashboard extends JPanel {
                                    (b.getStatus().equalsIgnoreCase("active") || 
                                     b.getStatus().equalsIgnoreCase("approved")))
                         .count();
+                    pendingApprovals = (int) bookings.stream()
+                        .filter(b -> b.getStatus() != null && b.getStatus().equalsIgnoreCase("pending"))
+                        .count();
+                    totalRevenue = bookingDAO.getTotalRevenue();
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
-                return new int[]{totalUsers, totalCars, activeBookings, availableCars};
+                return new Object[]{totalUsers, totalCars, activeBookings, availableCars, totalRevenue, pendingApprovals};
             }
 
             @Override
             protected void done() {
                 try {
-                    int[] stats = get();
-                    usersCard.updateValue(String.valueOf(stats[0]), null);
-                    carsCard.updateValue(String.valueOf(stats[1]), null);
-                    bookingsCard.updateValue(String.valueOf(stats[2]), null);
-                    availableCard.updateValue(String.valueOf(stats[3]), null);
+                    Object[] stats = get();
+                    usersCard.updateValue(String.valueOf((int) stats[0]), null);
+                    carsCard.updateValue(String.valueOf((int) stats[1]), null);
+                    bookingsCard.updateValue(String.valueOf((int) stats[2]), null);
+                    availableCard.updateValue(String.valueOf((int) stats[3]), null);
+                    java.math.BigDecimal rev = (java.math.BigDecimal) stats[4];
+                    revenueCard.updateValue("₹" + new java.text.DecimalFormat("#,##0.00").format(rev), null);
+                    pendingCard.updateValue(String.valueOf((int) stats[5]), null);
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
             }
         };
         worker.execute();
+    }
+
+    private void refreshTopStats() {
+        if (usersStatCard != null && carsStatCard != null && activeBookingsStatCard != null && availableCarsStatCard != null && revenueStatCard != null && pendingApprovalsStatCard != null) {
+            loadStatisticsWithCards(usersStatCard, carsStatCard, activeBookingsStatCard, availableCarsStatCard, revenueStatCard, pendingApprovalsStatCard);
+        }
     }
 
     private JPanel createUsersPanel() {
@@ -774,6 +819,7 @@ public class AdminDashboard extends JPanel {
                 if (bookingService.approveBooking(id)) {
                     Toast.success(panel, "Booking approved.");
                     loadBookingsData(model, null);
+                    refreshTopStats();
                 } else {
                     Toast.error(panel, "Failed to approve booking.");
                 }
@@ -791,6 +837,7 @@ public class AdminDashboard extends JPanel {
                 if (bookingService.startBooking(id)) {
                     Toast.success(panel, "Booking started.");
                     loadBookingsData(model, null);
+                    refreshTopStats();
                 } else {
                     Toast.error(panel, "Failed to start booking.");
                 }
@@ -808,6 +855,7 @@ public class AdminDashboard extends JPanel {
                 if (bookingService.completeBooking(id)) {
                     Toast.success(panel, "Booking completed.");
                     loadBookingsData(model, null);
+                    refreshTopStats();
                 } else {
                     Toast.error(panel, "Failed to complete booking.");
                 }
@@ -827,6 +875,7 @@ public class AdminDashboard extends JPanel {
                     if (bookingService.cancelBooking(id)) {
                         Toast.success(panel, "Booking cancelled.");
                         loadBookingsData(model, null);
+                        refreshTopStats();
                     } else {
                         Toast.error(panel, "Failed to cancel booking.");
                     }
@@ -840,6 +889,8 @@ public class AdminDashboard extends JPanel {
         refreshBtn.addActionListener(e -> {
             refreshBtn.setLoading(true);
             loadBookingsData(model, refreshBtn);
+            // Also refresh top stats to reflect any changes
+            refreshTopStats();
         });
 
         toolbar.add(approveBtn);

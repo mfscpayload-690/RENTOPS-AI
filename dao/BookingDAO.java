@@ -215,4 +215,26 @@ public class BookingDAO {
         }
         return false;
     }
+
+    /**
+     * Returns the total revenue (sum of total_price) for bookings that are considered earned.
+     * We include statuses that reflect recognized/ongoing revenue: approved/confirmed, active, completed.
+     *
+     * @return total revenue as BigDecimal (never null)
+     */
+    public java.math.BigDecimal getTotalRevenue() {
+        String sql = "SELECT COALESCE(SUM(total_price), 0) AS total FROM bookings WHERE status IN ('approved','confirmed','active','completed')";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    java.math.BigDecimal total = rs.getBigDecimal(1);
+                    return total != null ? total : java.math.BigDecimal.ZERO;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Database error calculating total revenue: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return java.math.BigDecimal.ZERO;
+    }
 }
