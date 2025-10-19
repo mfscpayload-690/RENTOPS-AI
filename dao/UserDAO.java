@@ -165,4 +165,51 @@ public class UserDAO {
         }
         return users;
     }
+
+    /**
+     * Resets password for the given username by generating a new salt and hash.
+     * Returns false if username doesn't exist.
+     */
+    public boolean resetPassword(String username, String newPassword) {
+        if (username == null || username.trim().isEmpty()) {
+            lastError = "Username cannot be empty";
+            return false;
+        }
+        if (newPassword == null || newPassword.length() < 4) {
+            lastError = "Password must be at least 4 characters";
+            return false;
+        }
+
+        // Ensure user exists
+        String checkSql = "SELECT id FROM users WHERE username = ?";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement check = conn.prepareStatement(checkSql)) {
+            check.setString(1, username.trim());
+            ResultSet rs = check.executeQuery();
+            if (!rs.next()) {
+                lastError = "User not found";
+                return false;
+            }
+        } catch (SQLException e) {
+            lastError = "Database error checking user: " + e.getMessage();
+            return false;
+        }
+
+        String salt = PasswordHasher.generateSalt();
+        String hash = PasswordHasher.hash(newPassword, salt);
+        String updateSql = "UPDATE users SET password_hash = ? WHERE username = ?";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement upd = conn.prepareStatement(updateSql)) {
+            upd.setString(1, hash + ":" + salt);
+            upd.setString(2, username.trim());
+            int updated = upd.executeUpdate();
+            if (updated == 1) {
+                lastError = "";
+                return true;
+            }
+            lastError = "Password reset failed";
+            return false;
+        } catch (SQLException e) {
+            lastError = "Database error during password reset: " + e.getMessage();
+            return false;
+        }
+    }
 }

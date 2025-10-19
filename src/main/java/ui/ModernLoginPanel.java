@@ -5,6 +5,8 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import services.AuthService;
+import ui.components.PasswordResetDialog;
+import ui.components.Toast;
 import utils.ModernTheme;
 
 /**
@@ -216,6 +218,7 @@ public class ModernLoginPanel extends JPanel {
         confirmPasswordField.setMaximumSize(new Dimension(400, ModernTheme.INPUT_HEIGHT));
         confirmPasswordField.setVisible(false);
         formPanel.add(confirmPasswordField);
+        formPanel.add(Box.createVerticalStrut(8));
 
         // Role selection (for registration, initially hidden)
         roleLabel = new JLabel("Role");
@@ -224,12 +227,15 @@ public class ModernLoginPanel extends JPanel {
         roleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         roleLabel.setVisible(false);
         formPanel.add(roleLabel);
+        formPanel.add(Box.createVerticalStrut(8));
         
         roleComboBox = new JComboBox<>(new String[]{"user", "admin"});
         roleComboBox.setFont(ModernTheme.FONT_REGULAR);
+        roleComboBox.setAlignmentX(Component.LEFT_ALIGNMENT);
         roleComboBox.setMaximumSize(new Dimension(400, ModernTheme.INPUT_HEIGHT));
         roleComboBox.setVisible(false);
         formPanel.add(roleComboBox);
+        formPanel.add(Box.createVerticalStrut(8));
 
         // Organization field (for registration, initially hidden)
         organizationLabel = new JLabel("Organization (Optional)");
@@ -238,12 +244,14 @@ public class ModernLoginPanel extends JPanel {
         organizationLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         organizationLabel.setVisible(false);
         formPanel.add(organizationLabel);
+        formPanel.add(Box.createVerticalStrut(8));
         
         organizationField = ModernTheme.createModernTextField("Your organization");
         organizationField.setAlignmentX(Component.LEFT_ALIGNMENT);
         organizationField.setMaximumSize(new Dimension(400, ModernTheme.INPUT_HEIGHT));
         organizationField.setVisible(false);
         formPanel.add(organizationField);
+        formPanel.add(Box.createVerticalStrut(8));
 
         mainCardPanel.add(formPanel);
         mainCardPanel.add(Box.createVerticalStrut(15));
@@ -269,10 +277,18 @@ public class ModernLoginPanel extends JPanel {
         forgotPasswordLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                JOptionPane.showMessageDialog(ModernLoginPanel.this,
-                    "Password reset functionality coming soon!",
-                    "Forgot Password",
-                    JOptionPane.INFORMATION_MESSAGE);
+                Window owner = SwingUtilities.getWindowAncestor(ModernLoginPanel.this);
+                PasswordResetDialog dlg = new PasswordResetDialog(owner, authService, () -> {
+                    // On successful reset: show toast and focus password field
+                    Toast.success(ModernLoginPanel.this, "Password reset successfully! Please log in.");
+                    SwingUtilities.invokeLater(() -> {
+                        switchToLoginMode();
+                        usernameField.setText("");
+                        passwordField.setText("");
+                        passwordField.requestFocusInWindow();
+                    });
+                });
+                dlg.setVisible(true);
             }
 
             @Override

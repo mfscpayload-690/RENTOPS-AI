@@ -117,4 +117,27 @@ public class AuthService {
     public void updateSessionActivity() {
         sessionManager.updateSessionActivity();
     }
+
+    /**
+     * Resets a user's password. Admin-less flow used from Forgot Password dialog.
+     * - Validates inputs
+     * - Delegates to UserDAO to update hash+salt
+     */
+    public boolean resetPassword(String username, String newPassword) {
+        if (username == null || username.trim().isEmpty()) {
+            lastError = "Username cannot be empty";
+            return false;
+        }
+        if (newPassword == null || newPassword.length() < 4) {
+            lastError = "New password must be at least 4 characters long";
+            return false;
+        }
+        boolean ok = userDAO.resetPassword(username.trim(), newPassword);
+        if (!ok) {
+            lastError = userDAO.getLastError();
+        } else {
+            lastError = "";
+        }
+        return ok;
+    }
 }
