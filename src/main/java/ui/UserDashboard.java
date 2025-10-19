@@ -69,7 +69,6 @@ public class UserDashboard extends JPanel {
         contentPanel.add(createWelcomePanel(), "welcome");
         contentPanel.add(createSearchCarsPanel(), "search");
         contentPanel.add(createMyBookingsPanel(), "bookings");
-        contentPanel.add(createAIAssistantPanel(), "ai-assistant");
         contentPanel.add(createProfilePanel(), "profile");
 
         add(contentPanel, BorderLayout.CENTER);
@@ -160,8 +159,8 @@ public class UserDashboard extends JPanel {
         sidebar.add(title);
         sidebar.add(Box.createVerticalStrut(30));
 
-        String[] menuItems = {"Welcome", "Search Cars", "My Bookings", "AI Assistant", "Profile"};
-        String[] cardNames = {"welcome", "search", "bookings", "ai-assistant", "profile"};
+        String[] menuItems = {"Welcome", "Search Cars", "My Bookings", "Profile"};
+        String[] cardNames = {"welcome", "search", "bookings", "profile"};
 
         for (int i = 0; i < menuItems.length; i++) {
             final String cardName = cardNames[i];
@@ -813,10 +812,6 @@ public class UserDashboard extends JPanel {
         if (lblProfileMemberSinceValue != null) {
             lblProfileMemberSinceValue.setText(memberSince);
         }
-    }
-
-    private JPanel createAIAssistantPanel() {
-        return new AIAssistantPanel();
     }
 
     private void showLogoutDialog() {

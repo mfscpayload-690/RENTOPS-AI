@@ -68,7 +68,6 @@ public class AdminDashboard extends JPanel {
         contentPanel.add(createUsersPanel(), "users");
         contentPanel.add(createCarsPanel(), "cars");
         contentPanel.add(createBookingsPanel(), "bookings");
-        contentPanel.add(createReportsPanel(), "reports");
 
         add(contentPanel, BorderLayout.CENTER);
 
@@ -93,8 +92,8 @@ public class AdminDashboard extends JPanel {
         sidebar.add(title);
         sidebar.add(Box.createVerticalStrut(30));
 
-        String[] menuItems = {"Overview", "Users", "Cars", "Bookings", "Reports"};
-        String[] cardNames = {"overview", "users", "cars", "bookings", "reports"};
+        String[] menuItems = {"Overview", "Users", "Cars", "Bookings"};
+        String[] cardNames = {"overview", "users", "cars", "bookings"};
 
         for (int i = 0; i < menuItems.length; i++) {
             final String cardName = cardNames[i];
@@ -918,11 +917,6 @@ public class AdminDashboard extends JPanel {
             }
         };
         worker.execute();
-    }
-
-    private JPanel createReportsPanel() {
-        // Return the new AI-powered reports panel
-        return new AIReportsPanel();
     }
 
     private void showLogoutDialog() {
