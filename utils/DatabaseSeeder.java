@@ -18,7 +18,8 @@ import java.util.Set;
  */
 public class DatabaseSeeder {
 
-    private static final String SCRIPT_FILE = "add_new_cars.sql";
+    // Look for SQL seed script under sql/seeds for better repo hygiene
+    private static final String SCRIPT_FILE = "sql/seeds/add_new_cars.sql";
 
     public static void seedCarsIfNeeded() {
         File f = new File(SCRIPT_FILE);
