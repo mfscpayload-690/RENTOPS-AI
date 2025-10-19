@@ -14,13 +14,16 @@ Modern car rental management system built with Java Swing, featuring role-based 
 ## Screenshots
 
 ### Login Panel
-*Screenshot placeholder*
+<img width="1323" height="889" alt="image" src="https://github.com/user-attachments/assets/77d6a81b-c8a6-496c-9555-c50f50570609" />
+
 
 ### Admin Dashboard
-*Screenshot placeholder*
+<img width="1319" height="881" alt="image" src="https://github.com/user-attachments/assets/ccd14f75-9d14-47a9-b3f7-20147393d5b1" />
+
 
 ### User Dashboard
-*Screenshot placeholder*
+<img width="1317" height="881" alt="image" src="https://github.com/user-attachments/assets/7f5b2bd7-a9a9-4512-ac7f-767501ad62a9" />
+
 
 ## Tech Stack
 
