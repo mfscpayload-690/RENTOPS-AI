@@ -1,180 +1,114 @@
-# RENTOPS-AI
-Modern Java Swing application for rental car operations with a clean DAO/MVC structure and future-friendly AI/NLP integration points. **(ACADEMIC PROJECT)**
+﻿# RENTOPS-AI
 
----
-
-## Overview
-RENTOPS-AI is a desktop app that helps manage cars, users, and bookings. It uses:
-- Java Swing for the UI
-- JDBC for database access (MySQL/MariaDB)
-- Clear layering: models → DAO → services → UI
-
-Recent work includes:
-- New field total_km_driven for cars (schema + DAO + data)
-- Inventory expansion (now 20 cars, 19 available)
-- Utilities to run SQL scripts and ad‑hoc queries from the command line
-- Persistent login sessions via a user_sessions table
-
-AI features are planned and kept decoupled via interfaces so they can be added without touching core flows.
-
----
+Modern car rental management system built with Java Swing, featuring role-based dashboards, secure authentication, and persistent session management.
 
 ## Features
-- Fleet management (add/update/list cars, availability)
-- User and admin roles; simple dashboards
-- Bookings (basic CRUD in DAO layer)
-- Secure auth (salted password hashing) with optional persistent sessions
-- Utilities: SqlScriptRunner and DbQueryRunner for DB tasks
 
----
+- **Fleet Management**: Add, update, and track vehicle inventory with mileage monitoring
+- **User Management**: Role-based access control (Admin/User) with secure authentication
+- **Booking System**: Complete rental lifecycle management (create, update, track bookings)
+- **Session Persistence**: Automatic login restoration across application restarts
+- **Password Reset**: Self-service password recovery with secure hash regeneration
+- **Modern UI**: Dark-themed interface with FlatLaf, responsive layouts, and smooth animations
+
+## Screenshots
+
+### Login Panel
+*Screenshot placeholder*
+
+### Admin Dashboard
+*Screenshot placeholder*
+
+### User Dashboard
+*Screenshot placeholder*
 
 ## Tech Stack
-- Java 11+
-- Swing (desktop UI)
-- JDBC with MySQL/MariaDB
-- MySQL Connector/J 9.4.0 (mysql-connector-j-9.4.0.jar in project root)
 
-Note: This project currently builds without Maven/Gradle. Commands below show manual compile/run steps for Windows (PowerShell/CMD).
+- **Java**: 25 (compatible with Java 11+)
+- **Build Tool**: Maven 3.9.11
+- **UI Framework**: Java Swing with FlatLaf modern theme
+- **Database**: MySQL/MariaDB
+- **Security**: SHA-256 password hashing with unique salts
+- **Architecture**: MVC pattern with DAO layer
 
----
+## Project Structure
 
-## Project Structure (actual)
 ```
 RENTOPS-AI/
-├── dao/                # DAO classes (CarDAO, UserDAO, BookingDAO, SessionDAO)
-├── models/             # POJOs (Car, User, Booking, Payment, etc.)
-├── services/           # AuthService, SessionManager
-├── ui/                 # Swing panels and Main entry point
-├── utils/              # DatabaseConnection, SqlScriptRunner, DbQueryRunner
-├── config/             # db.properties
-├── bin/                # Compiled .class output
-├── *.sql               # Database setup/migration/data scripts
-└── mysql-connector-j-9.4.0.jar
+ dao/                    # Data Access Objects
+ models/                 # Domain models
+ services/               # Business logic layer
+ ui/                     # Swing UI components
+    components/         # Reusable UI components
+ utils/                  # Utilities and helpers
+ config/                 # Configuration files
+ sql/                    # Database scripts
+    seeds/             # Sample data
+    migrations/        # Schema updates
+    maintenance/       # Utility scripts
+ docs/                   # Documentation
 ```
 
----
+## Quick Start
 
-## Database
-Schema name: rentops_ai
+### Prerequisites
+- Java 11 or higher
+- Maven 3.6+
+- MySQL/MariaDB 5.7+
 
-Key tables:
-- users
-- cars (includes total_km_driven INT NOT NULL DEFAULT 0)
-- bookings
-- user_sessions (for persistent login)
-- ai_query_log (optional AI metrics/logging table)
+### Installation
 
-Included SQL scripts:
-- db_setup.sql – create schema and core tables (cars includes total_km_driven)
-- add_sessions_table.sql – create user_sessions table and indexes
-- alter_table.sql – migration helper to add total_km_driven to existing installs
-- add_new_cars.sql – adds 13 ready-to-rent cars with mileage and pricing
-- mysql_setup_commands.sql – convenience MySQL commands
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/RENTOPS-AI.git
+   cd RENTOPS-AI
+   ```
 
-Run scripts one of two ways:
-1) In your MySQL/MariaDB client (Workbench/CLI): SOURCE path/to/script.sql
-2) From this project using our runner:
+2. **Configure database**
+   
+   Edit `config/db.properties`:
+   ```properties
+   db.url=jdbc:mysql://localhost:3306/rentops_ai
+   db.user=your_username
+   db.password=your_password
+   ```
 
-```powershell
-# Compile the utils once (if needed)
-javac -d bin -cp ".;mysql-connector-j-9.4.0.jar" utils\*.java
+3. **Initialize database**
+   ```bash
+   mysql -u root -p < sql/seeds/db_setup.sql
+   ```
 
-# Run any SQL script
-java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "db_setup.sql"
-java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "add_sessions_table.sql"
-java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "alter_table.sql"
-java -cp "bin;mysql-connector-j-9.4.0.jar" utils.SqlScriptRunner "add_new_cars.sql"
-```
+4. **Build and run**
+   ```bash
+   mvn clean package
+   mvn exec:java
+   ```
 
-Ad‑hoc query helper:
-```powershell
-java -cp "bin;mysql-connector-j-9.4.0.jar" utils.DbQueryRunner "SELECT COUNT(*) FROM cars;"
-```
+## Database Schema
 
-Database config lives in config/db.properties:
-```
-db.url=jdbc:mysql://localhost:3306/rentops_ai?useSSL=false&allowPublicKeyRetrieval=true
-db.user=<your_user>
-db.password=<your_password>
-```
-Please do not commit real credentials.
+**Core Tables:**
+- `users` - User accounts with role-based permissions
+- `cars` - Vehicle inventory with mileage tracking
+- `bookings` - Rental transactions
+- `user_sessions` - Persistent login sessions
 
-### AI Logging Table (Optional)
-If you enable AI logging (`AI_LOG_DB_ENABLE=true` and provide an API key), create this table:
+## Security
 
-```sql
-CREATE TABLE ai_query_log (
-	id BIGINT AUTO_INCREMENT PRIMARY KEY,
-	task VARCHAR(40),
-	model VARCHAR(80),
-	prompt_hash CHAR(64),
-	prompt_chars INT,
-	response_chars INT,
-	latency_ms BIGINT,
-	success TINYINT(1),
-	error_type VARCHAR(120),
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_ai_query_log_task ON ai_query_log(task);
-CREATE INDEX idx_ai_query_log_model ON ai_query_log(model);
-```
+- **Password Storage**: SHA-256 hashing with unique per-user salts
+- **Session Management**: Secure token-based persistent sessions
+- **Password Reset**: Self-service recovery with validation
+- **SQL Injection**: Parameterized queries via PreparedStatements
 
+## Documentation
 
----
-
-## Build and Run (Windows)
-From a PowerShell or CMD prompt in the project root:
-
-```powershell
-# 1) Compile
-javac -d bin -cp ".;mysql-connector-j-9.4.0.jar" dao\*.java models\*.java services\*.java ui\*.java utils\*.java
-
-# 2) Run
-java -cp "bin;mysql-connector-j-9.4.0.jar" ui.Main
-```
-
-If you see driver or connection errors:
-- Ensure mysql-connector-j-9.4.0.jar exists in the project root
-- Verify config/db.properties points to a running MySQL/MariaDB instance
-- Confirm the rentops_ai schema exists (run db_setup.sql)
-
----
-
-## Notes on Authentication
-- Passwords are stored as **salted hashes**; never store plain text passwords
-- The seed admin in db_setup.sql is a placeholder; create users via the app’s Register flow or insert a properly hashed password
-- Session persistence uses user_sessions; you can disable by not creating that table
-
----
+- [Admin Dashboard Guide](docs/ADMIN_DASHBOARD_GUIDE.md)
+- [Password Reset Feature](docs/PASSWORD_RESET_FEATURE.md)
+- [Theming Guide](docs/THEMING_GUIDE.md)
 
 ## License
-MIT — see LICENSE
 
----
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## AI Features (In Progress)
+## Academic Project
 
-Implemented slices:
-1. Intent Extraction (heuristic + optional LLM)
-2. Logging & Metrics (per task/model; persisted to `ai_query_log` if enabled)
-3. Summarization Pipeline (sentence split → chunk → per-chunk summary → merged summary)
-
-### Summarization Components (`com.rentops.ai.summarize`)
-- `SentenceSplitter` – naive regex-based splitter.
-- `Chunker` – groups sentences into size-bounded chunks (target char size, preserves sentence boundaries).
-- `ChunkSummarizerService` – heuristic (first sentence + key capitalized tokens & numbers) or LLM (task `CHUNK_SUMMARY`).
-- `MergeSummarizerService` – heuristic (top distinct sentences) or LLM (task `MERGE_SUMMARY`).
-- `SummarizationPipeline` – orchestrates and returns final summary plus metadata (chunk count, average chunk length, elapsed ms, individual chunk summaries).
-
-Heuristic mode is used when AI is disabled or an LLM error occurs (graceful fallback).
-
-Example (conceptual):
-```java
-var chunkSummarizer = new ChunkSummarizerService(loggingClient, aiEnabled);
-var mergeSummarizer = new MergeSummarizerService(loggingClient, aiEnabled);
-var pipeline = new SummarizationPipeline(800, chunkSummarizer, mergeSummarizer);
-var result = pipeline.summarize(longReportText);
-System.out.println(result.summary());
-```
-
-Metrics & Logging: When using a `LoggingLlmClient`, tasks `CHUNK_SUMMARY` and `MERGE_SUMMARY` appear in in-memory metrics and (if enabled) DB logs.
+This is an academic project developed for educational purposes.
