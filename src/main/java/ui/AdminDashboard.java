@@ -9,8 +9,6 @@ import models.User;
 import ui.components.*;
 import utils.ModernTheme;
 
-import ui.components.PieChartPanel;
-
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
