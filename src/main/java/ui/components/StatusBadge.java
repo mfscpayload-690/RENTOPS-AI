@@ -4,154 +4,74 @@ import utils.ModernTheme;
 import javax.swing.*;
 import java.awt.*;
 
-/**
- * StatusBadge - Modern badge component for displaying status/category tags.
- * 
- * Features:
- * - Rounded pill-shaped badges
- * - Predefined status colors (Active, Pending, Complete, Error, etc.)
- * - Customizable colors
- * - Subtle background with colored text
- * - Small, medium, large sizes
- * 
- * Usage:
- * <pre>
- * StatusBadge badge = StatusBadge.success("Active");
- * StatusBadge badge = StatusBadge.warning("Pending");
- * StatusBadge badge = StatusBadge.error("Failed");
- * StatusBadge badge = new StatusBadge("Custom", Color.BLUE, Size.MEDIUM);
- * </pre>
- * 
- * Inspired by: GitHub labels, Linear status badges, Stripe status pills
- */
 public class StatusBadge extends JLabel {
-    
-    public enum Size {
-        SMALL(10, 6, 11),
-        MEDIUM(12, 8, 12),
-        LARGE(14, 10, 14);
-        
-        final int fontSize;
-        final int vPadding;
-        final int hPadding;
-        
-        Size(int fontSize, int vPadding, int hPadding) {
-            this.fontSize = fontSize;
-            this.vPadding = vPadding;
-            this.hPadding = hPadding;
+    public enum Type {
+        SUCCESS, ERROR, WARNING, INFO, PENDING
+    }
+
+    public static StatusBadge create(String text, Type type) {
+        StatusBadge badge = new StatusBadge(text);
+        badge.setOpaque(true);
+        badge.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        badge.setHorizontalAlignment(SwingConstants.CENTER);
+        badge.setBorder(BorderFactory.createEmptyBorder(4, 12, 4, 12));
+
+        switch (type) {
+            case SUCCESS:
+                badge.setBackground(ModernTheme.SUCCESS_GREEN.darker());
+                badge.setForeground(Color.WHITE);
+                break;
+            case ERROR:
+                badge.setBackground(ModernTheme.ERROR_RED);
+                badge.setForeground(Color.WHITE);
+                break;
+            case WARNING:
+                badge.setBackground(ModernTheme.WARNING_YELLOW);
+                badge.setForeground(ModernTheme.SURFACE_DARK);
+                break;
+            case INFO:
+                badge.setBackground(ModernTheme.ACCENT_BLUE);
+                badge.setForeground(Color.WHITE);
+                break;
+            case PENDING:
+                badge.setBackground(ModernTheme.ACCENT_ORANGE);
+                badge.setForeground(Color.WHITE);
+                break;
         }
+
+        return badge;
+    }
+
+    private StatusBadge(String text) {
+        super(text.toUpperCase());
     }
     
-    private Color badgeColor;
-    private Color bgColor;
-    
-    /**
-     * Create a status badge with text, color, and size.
-     * 
-     * @param text Badge text
-     * @param color Badge color (text and border)
-     * @param size Badge size
-     */
-    public StatusBadge(String text, Color color, Size size) {
-        super(text);
-        this.badgeColor = color;
-        this.bgColor = new Color(
-            color.getRed(),
-            color.getGreen(),
-            color.getBlue(),
-            30  // 30 alpha for subtle background
-        );
-        
-        setupBadge(size);
-    }
-    
-    /**
-     * Create a medium-sized badge.
-     */
-    public StatusBadge(String text, Color color) {
-        this(text, color, Size.MEDIUM);
-    }
-    
-    /**
-     * Setup badge appearance.
-     */
-    private void setupBadge(Size size) {
-        setFont(new Font("Segoe UI", Font.BOLD, size.fontSize));
-        setForeground(badgeColor);
-        setOpaque(false);
-        setHorizontalAlignment(SwingConstants.CENTER);
-        setBorder(BorderFactory.createEmptyBorder(
-            size.vPadding, size.hPadding, size.vPadding, size.hPadding
-        ));
-    }
-    
-    // ========== Factory methods for common statuses ==========
-    
-    /**
-     * Create a success badge (green).
-     */
+    // Convenience methods
     public static StatusBadge success(String text) {
-        return new StatusBadge(text, ModernTheme.SUCCESS_GREEN);
+        return create(text, Type.SUCCESS);
     }
     
-    /**
-     * Create a warning badge (yellow/orange).
-     */
-    public static StatusBadge warning(String text) {
-        return new StatusBadge(text, ModernTheme.WARNING_YELLOW);
-    }
-    
-    /**
-     * Create an error badge (red).
-     */
     public static StatusBadge error(String text) {
-        return new StatusBadge(text, ModernTheme.ERROR_RED);
+        return create(text, Type.ERROR);
     }
     
-    /**
-     * Create an info badge (blue).
-     */
+    public static StatusBadge warning(String text) {
+        return create(text, Type.WARNING);
+    }
+    
     public static StatusBadge info(String text) {
-        return new StatusBadge(text, ModernTheme.ACCENT_BLUE);
+        return create(text, Type.INFO);
     }
     
-    /**
-     * Create a primary badge (orange).
-     */
     public static StatusBadge primary(String text) {
-        return new StatusBadge(text, ModernTheme.ACCENT_ORANGE);
+        return create(text, Type.INFO);
     }
     
-    /**
-     * Create a neutral badge (gray).
-     */
+    public static StatusBadge pending(String text) {
+        return create(text, Type.PENDING);
+    }
+    
     public static StatusBadge neutral(String text) {
-        return new StatusBadge(text, ModernTheme.TEXT_SECONDARY);
-    }
-    
-    @Override
-    protected void paintComponent(Graphics g) {
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        
-        // Draw rounded pill background
-        g2.setColor(bgColor);
-        g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
-        
-        // Draw border
-        g2.setColor(badgeColor);
-        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, getHeight(), getHeight());
-        
-        g2.dispose();
-        
-        super.paintComponent(g);
-    }
-    
-    @Override
-    public Dimension getPreferredSize() {
-        Dimension size = super.getPreferredSize();
-        // Make it pill-shaped by ensuring height is consistent
-        size.height = Math.max(size.height, 28);
-        return size;
+        return create(text, Type.PENDING);
     }
 }

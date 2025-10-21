@@ -57,6 +57,14 @@ public class ModernTheme {
     public static final Font FONT_LARGE = new Font("Segoe UI", Font.PLAIN, 16);
     public static final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 15);
     
+    // Aliases for backward compatibility
+    public static final Font PRIMARY_FONT = FONT_REGULAR;
+    public static final Font MEDIUM_FONT = FONT_REGULAR;
+    public static final Font MEDIUM_BOLD_FONT = FONT_BOLD;
+    public static final Color CARD_BG = BG_CARD;
+    public static final Color BG_PRIMARY = BG_DARK;
+    public static final Color SURFACE_DARK = BG_DARKER;
+    
     // ========== DIMENSIONS ==========
     
     public static final int BORDER_RADIUS = 8;

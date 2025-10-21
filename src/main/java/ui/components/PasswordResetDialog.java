@@ -1,104 +1,136 @@
 package ui.components;
 
+import dao.UserDAO;
 import services.AuthService;
+import utils.ModernTheme;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class PasswordResetDialog extends JDialog {
-    private final AuthService authService;
-    private final Runnable onSuccessCallback;
-
     private JTextField usernameField;
     private JPasswordField newPasswordField;
     private JPasswordField confirmPasswordField;
-    private JButton resetButton;
-    private JButton cancelButton;
-    private JLabel messageLabel;
+    private UserDAO userDAO;
+    private AuthService authService;
+    private Runnable onSuccess;
 
-    public PasswordResetDialog(Window owner, AuthService authService) {
-        this(owner, authService, null);
+    public PasswordResetDialog(Frame parent) {
+        this((Window) parent, null, null);
     }
-
-    public PasswordResetDialog(Window owner, AuthService authService, Runnable onSuccessCallback) {
-        super(owner, "Forgot Password", ModalityType.APPLICATION_MODAL);
+    
+    public PasswordResetDialog(Window parent, AuthService authService) {
+        this(parent, authService, null);
+    }
+    
+    public PasswordResetDialog(Window parent, AuthService authService, Runnable onSuccess) {
+        super(parent, "Reset Password", Dialog.ModalityType.APPLICATION_MODAL);
         this.authService = authService;
-        this.onSuccessCallback = onSuccessCallback;
-        initUI();
-    }
+        this.userDAO = new UserDAO();
+        this.onSuccess = onSuccess;
+        
+        setSize(400, 300);
+        setLocationRelativeTo(parent);
+        getContentPane().setBackground(ModernTheme.BG_PRIMARY);
 
-    private void initUI() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(16,16,16,16));
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(ModernTheme.BG_PRIMARY);
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6,6,6,6);
         gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
 
-        int row = 0;
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
-        JLabel title = new JLabel("Reset your password");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
-        panel.add(title, gbc);
+        JLabel userLabel = new JLabel("Username:");
+        userLabel.setForeground(ModernTheme.TEXT_PRIMARY);
+        userLabel.setFont(ModernTheme.MEDIUM_FONT);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        formPanel.add(userLabel, gbc);
 
-        row++; gbc.gridwidth = 1;
-        gbc.gridx = 0; gbc.gridy = row; panel.add(new JLabel("Username"), gbc);
-        gbc.gridx = 1; usernameField = new JTextField(20); panel.add(usernameField, gbc);
+        usernameField = new JTextField(20);
+        usernameField.setFont(ModernTheme.MEDIUM_FONT);
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        formPanel.add(usernameField, gbc);
 
-        row++;
-        gbc.gridx = 0; gbc.gridy = row; panel.add(new JLabel("New Password"), gbc);
-        gbc.gridx = 1; newPasswordField = new JPasswordField(20); panel.add(newPasswordField, gbc);
+        JLabel newPassLabel = new JLabel("New Password:");
+        newPassLabel.setForeground(ModernTheme.TEXT_PRIMARY);
+        newPassLabel.setFont(ModernTheme.MEDIUM_FONT);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        formPanel.add(newPassLabel, gbc);
 
-        row++;
-        gbc.gridx = 0; gbc.gridy = row; panel.add(new JLabel("Confirm Password"), gbc);
-        gbc.gridx = 1; confirmPasswordField = new JPasswordField(20); panel.add(confirmPasswordField, gbc);
+        newPasswordField = new JPasswordField(20);
+        newPasswordField.setFont(ModernTheme.MEDIUM_FONT);
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        formPanel.add(newPasswordField, gbc);
 
-        row++;
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
-        messageLabel = new JLabel(" ");
-        messageLabel.setForeground(new Color(200, 80, 80));
-        panel.add(messageLabel, gbc);
+        JLabel confirmLabel = new JLabel("Confirm Password:");
+        confirmLabel.setForeground(ModernTheme.TEXT_PRIMARY);
+        confirmLabel.setFont(ModernTheme.MEDIUM_FONT);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        formPanel.add(confirmLabel, gbc);
 
-        row++;
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        resetButton = new JButton("Reset Password");
-        cancelButton = new JButton("Cancel");
-        buttons.add(cancelButton);
-        buttons.add(resetButton);
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; panel.add(buttons, gbc);
+        confirmPasswordField = new JPasswordField(20);
+        confirmPasswordField.setFont(ModernTheme.MEDIUM_FONT);
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        formPanel.add(confirmPasswordField, gbc);
 
-        setContentPane(panel);
-        getRootPane().setDefaultButton(resetButton);
-        pack();
-        setLocationRelativeTo(getOwner());
+        add(formPanel, BorderLayout.CENTER);
 
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(ModernTheme.BG_PRIMARY);
+
+        JButton resetButton = new JButton("Reset");
+        resetButton.setFont(ModernTheme.MEDIUM_BOLD_FONT);
+        resetButton.setBackground(ModernTheme.ACCENT_BLUE);
+        resetButton.setForeground(ModernTheme.TEXT_PRIMARY);
+        resetButton.addActionListener(e -> handleReset());
+        buttonPanel.add(resetButton);
+
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.setFont(ModernTheme.MEDIUM_FONT);
         cancelButton.addActionListener(e -> dispose());
-        resetButton.addActionListener(e -> onReset());
+        buttonPanel.add(cancelButton);
+
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private void onReset() {
+    private void handleReset() {
         String username = usernameField.getText().trim();
-        String pwd = new String(newPasswordField.getPassword());
-        String cpwd = new String(confirmPasswordField.getPassword());
+        String newPassword = new String(newPasswordField.getPassword());
+        String confirmPassword = new String(confirmPasswordField.getPassword());
 
-        if (username.isEmpty()) { messageLabel.setText("Please enter your username"); return; }
-        if (pwd.length() < 4) { messageLabel.setText("Password must be at least 4 characters"); return; }
-        if (!pwd.equals(cpwd)) { messageLabel.setText("Passwords do not match"); return; }
+        if (username.isEmpty() || newPassword.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all fields", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-        resetButton.setEnabled(false);
+        if (!newPassword.equals(confirmPassword)) {
+            JOptionPane.showMessageDialog(this, "Passwords do not match", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         try {
-            boolean ok = authService.resetPassword(username, pwd);
-            if (ok) {
+            boolean success = userDAO.resetPassword(username, newPassword);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Password reset successfully!", "Success", 
+                    JOptionPane.INFORMATION_MESSAGE);
                 dispose();
-                if (onSuccessCallback != null) {
-                    onSuccessCallback.run();
-                } else {
-                    JOptionPane.showMessageDialog(getOwner(), "Password has been reset. Please log in.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                if (onSuccess != null) {
+                    onSuccess.run();
                 }
             } else {
-                messageLabel.setText(authService.getLastError());
+                JOptionPane.showMessageDialog(this, "Failed to reset password. User not found.", "Error", 
+                    JOptionPane.ERROR_MESSAGE);
             }
-        } finally {
-            resetButton.setEnabled(true);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", 
+                JOptionPane.ERROR_MESSAGE);
         }
     }
 }

@@ -90,28 +90,7 @@
           <release>25</release>
         </configuration>
       </plugin>
-      <!-- Include existing non-standard source dirs -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.5.0</version>
-        <executions>
-          <execution>
-            <id>add-old-sources</id>
-            <phase>generate-sources</phase>
-            <goals><goal>add-source</goal></goals>
-            <configuration>
-              <sources>
-                <source>dao</source>
-                <source>models</source>
-                <source>services</source>
-                <source>ui</source>
-                <source>utils</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
