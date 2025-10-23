@@ -109,6 +109,14 @@ RENTOPS-AI/
 - [Password Reset Feature](docs/PASSWORD_RESET_FEATURE.md)
 - [Theming Guide](docs/THEMING_GUIDE.md)
 
+## Project Members
+
+- Aravind Lal
+- Abhijith P
+- Aleena Mary Joseph
+- Harshitha Hari
+- Sween Shaji
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
