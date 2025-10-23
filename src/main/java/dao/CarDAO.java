@@ -123,7 +123,8 @@ public class CarDAO {
 
     public boolean addCar(Car car) {
         String sql = "INSERT INTO cars (make, model, year, license_plate, status, specs, price_per_day, total_km_driven, exterior_images, interior_images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); 
+             PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, car.getMake());
             stmt.setString(2, car.getModel());
             stmt.setInt(3, car.getYear());
@@ -134,7 +135,18 @@ public class CarDAO {
             stmt.setInt(8, car.getTotalKmDriven());
             stmt.setString(9, listToJson(car.getExteriorImages()));
             stmt.setString(10, listToJson(car.getInteriorImages()));
-            return stmt.executeUpdate() == 1;
+            
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected == 1) {
+                // Retrieve and set the generated ID
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        car.setId(generatedKeys.getInt(1));
+                    }
+                }
+                return true;
+            }
+            return false;
         } catch (SQLException e) {
             System.err.println("Database error adding car: " + e.getMessage());
             e.printStackTrace();
